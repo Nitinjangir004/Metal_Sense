@@ -20,4 +20,10 @@ export default defineConfig({
       },
     },
   },
+  // @ts-expect-error vitest options
+  test: {
+    globals: true,
+    include: ['src/**/*.test.{ts,tsx}'],
+    exclude: ['**/e2e/**', '**/node_modules/**', '**/dist/**'],
+  },
 });

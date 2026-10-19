@@ -1,4 +1,6 @@
 import express from 'express';
+import path from 'path';
+import fs from 'fs';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -53,6 +55,18 @@ api.use('/workspaces', workspacesRouter);
 api.use('/imports', importsRouter);
 
 app.use(env.API_PREFIX, api);
+
+// Production Static Client Bundle Serving
+if (env.NODE_ENV === 'production') {
+  const clientDist = path.resolve(process.cwd(), '../client/dist');
+  if (fs.existsSync(clientDist)) {
+    app.use(express.static(clientDist));
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api')) return next();
+      res.sendFile(path.join(clientDist, 'index.html'));
+    });
+  }
+}
 
 // Centralized Error Handling
 app.use(errorHandler);
