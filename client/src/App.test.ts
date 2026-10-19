@@ -27,4 +27,18 @@ describe('Client Benchmark & Route Integrity', () => {
     expect(analysis.overallPollutionCategory).toBe('High Pollution');
     expect(analysis.exceededAnalytes.length).toBeGreaterThanOrEqual(2);
   });
+
+  it('validates agricultural well GW-AGR-2026-04 is classified as medium pollution', () => {
+    const analysis = DEMO_ANALYSES['demo-sample-002'];
+    expect(analysis.hpi.value).toBe(38.6);
+    expect(analysis.hpi.classification).toBe('medium');
+    expect(analysis.exceededAnalytes.length).toBe(0);
+  });
+
+  it('validates deep municipal borewell GW-RES-2026-03 is classified as low pollution', () => {
+    const analysis = DEMO_ANALYSES['demo-sample-003'];
+    expect(analysis.hpi.value).toBe(14.2);
+    expect(analysis.hpi.value).toBeLessThan(25);
+    expect(analysis.hpi.classification).toBe('low');
+  });
 });

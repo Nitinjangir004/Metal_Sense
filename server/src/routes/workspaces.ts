@@ -5,6 +5,7 @@ import { db } from '../db/store.js';
 import { CreateSampleSchema, BIS_10500_2012, STANDARD_REGISTRY } from '@metalsense/shared';
 import { calculateSampleIndices } from '../services/calculation/index.js';
 import { aiService } from '../services/ai/adapter.js';
+import { generateWorkspaceCsv, generateAuditPdf } from '../services/reports/reportGenerator.js';
 
 export const workspacesRouter = Router();
 
@@ -280,6 +281,134 @@ workspacesRouter.post(
 
     const summary = await aiService.compareSamples(items);
     res.json({ data: summary });
+  }
+);
+
+/**
+ * GET /api/v1/workspaces/:workspaceId/reports/csv
+ * Exports an RFC-4180 compliant CSV matrix of all samples and evaluated indices.
+ */
+workspacesRouter.get(
+  '/:workspaceId/reports/csv',
+  requireWorkspaceRole('viewer'),
+  (req: Request, res: Response) => {
+    const ws = db.findWorkspaceById(req.params.workspaceId);
+    if (!ws) {
+      return res.status(404).json({ error: 'Workspace not found.' });
+    }
+
+    const samples = db.findSamplesByWorkspace(req.params.workspaceId);
+    const items = samples.map((sample) => {
+      let analysis = db.analyses.get(sample.id);
+      if (!analysis) {
+        analysis = calculateSampleIndices(sample, {
+          standard: BIS_10500_2012,
+          lodStrategy: 'half_lod',
+        });
+        db.analyses.set(sample.id, analysis);
+      }
+      return { sample, analysis };
+    });
+
+    const csvData = generateWorkspaceCsv(items);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="MetalSense_${ws.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_Matrix.csv"`
+    );
+    res.send(csvData);
+  }
+);
+
+/**
+ * GET /api/v1/workspaces/:workspaceId/reports/pdf
+ * Generates an auditable, high-resolution PDF compliance dossier for the workspace.
+ */
+workspacesRouter.get(
+  '/:workspaceId/reports/pdf',
+  requireWorkspaceRole('viewer'),
+  async (req: Request, res: Response, next) => {
+    try {
+      const ws = db.findWorkspaceById(req.params.workspaceId);
+      if (!ws) {
+        return res.status(404).json({ error: 'Workspace not found.' });
+      }
+
+      const standardCode = (req.query.standardCode as string) || 'BIS_10500_2012';
+      const standard = STANDARD_REGISTRY[standardCode] || BIS_10500_2012;
+
+      const samples = db.findSamplesByWorkspace(req.params.workspaceId);
+      const items = samples.map((sample) => {
+        let analysis = db.analyses.get(sample.id);
+        if (!analysis || analysis.standardUsed.code !== standard.code) {
+          analysis = calculateSampleIndices(sample, {
+            standard,
+            lodStrategy: 'half_lod',
+          });
+          db.analyses.set(sample.id, analysis);
+        }
+        return { sample, analysis };
+      });
+
+      const pdfBuffer = await generateAuditPdf(items, {
+        workspaceName: ws.name,
+        standard,
+      });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="MetalSense_${ws.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_Dossier.pdf"`
+      );
+      res.send(pdfBuffer);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+/**
+ * GET /api/v1/workspaces/:workspaceId/samples/:sampleId/reports/pdf
+ * Generates a focused single-sample PDF report.
+ */
+workspacesRouter.get(
+  '/:workspaceId/samples/:sampleId/reports/pdf',
+  requireWorkspaceRole('viewer'),
+  async (req: Request, res: Response, next) => {
+    try {
+      const ws = db.findWorkspaceById(req.params.workspaceId);
+      const sample = db.findSampleById(req.params.sampleId);
+      if (!ws || !sample || sample.workspaceId !== req.params.workspaceId) {
+        return res.status(404).json({ error: 'Sample not found in this workspace.' });
+      }
+
+      let analysis = db.analyses.get(sample.id);
+      if (!analysis) {
+        analysis = calculateSampleIndices(sample, {
+          standard: BIS_10500_2012,
+          lodStrategy: 'half_lod',
+        });
+        db.analyses.set(sample.id, analysis);
+      }
+
+      const pdfBuffer = await generateAuditPdf(
+        [{ sample, analysis }],
+        {
+          workspaceName: ws.name,
+          standard: STANDARD_REGISTRY[analysis.standardUsed.code] || BIS_10500_2012,
+          reportId: `MS-SAMPLE-${sample.sampleCode}`,
+        }
+      );
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="MetalSense_${sample.sampleCode}_Dossier.pdf"`
+      );
+      res.send(pdfBuffer);
+    } catch (err) {
+      next(err);
+    }
   }
 );
 

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@metalsense/shared": "*",
+    "@types/pdfkit": "^0.17.6",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
@@ -22,6 +23,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.9.5",
     "multer": "^1.4.5-lts.1",
+    "pdfkit": "^0.20.2",
     "zod": "^3.24.1"
   },
   "devDependencies": {
