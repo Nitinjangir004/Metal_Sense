@@ -1,0 +1,10 @@
+# MetalSense — Environmental Heavy Metal Laboratory Test Report
+# Format: RFC-4180 CSV Matrix
+# Matrix: Groundwater / Drinking Water
+# Note: Fictional benchmark test data prepared for testing ingestion, deterministic calculations, and mapping.
+SampleCode,SampleMatrix,CollectionDate,LocationName,District,Latitude,Longitude,LabName,As_mg_L,Pb_mg_L,Cd_mg_L,Cr_mg_L,Cu_mg_L,Fe_mg_L,Zn_mg_L,Ni_mg_L,Mn_mg_L,Notes
+GW-TEST-001,groundwater,2026-03-22T09:30:00Z,"Industrial Borewell #1 - Electroplating Hub","Okhla Phase-II, Delhi",28.5284,77.2758,"National Environmental Testing Lab",0.045,0.028,0.006,0.085,0.12,1.85,3.20,0.042,0.25,"Industrial runoff zone; elevated Pb, Cd, and Ni exceeding IS 10500"
+GW-TEST-002,drinking_water,2026-03-22T10:15:00Z,"Deep Bedrock Well #4 - Nature Sanctuary","Asola Bhatti, South Delhi",28.4875,77.2185,"National Environmental Testing Lab",<0.001,<0.001,<0.0005,0.008,0.015,0.08,0.45,0.003,0.02,"Protected watershed aquifer; pristine quality within all drinking limits"
+GW-TEST-003,groundwater,2026-03-22T11:00:00Z,"Agricultural Tubewell - Farm Sector 8","Najafgarh Basin, South West Delhi",28.6092,76.9854,"Kisan Agro Environmental Labs",0.008,0.009,0.0015,0.032,0.045,0.85,4.10,0.014,0.12,"Agricultural zone with elevated aesthetic iron and zinc"
+GW-TEST-004,drinking_water,2026-03-22T11:45:00Z,"Municipal Pumping Station Well #2","Rohini Sector 14, North West Delhi",28.7183,77.1216,"Delhi Jal Water Quality Lab",0.012,0.011,0.0028,0.048,0.035,0.38,1.80,0.019,0.08,"Urban municipal aquifer; arsenic and lead slightly above desirable threshold"
+GW-TEST-005,surface_water,2026-03-22T12:30:00Z,"Yamuna Floodplain Monitoring Station #7","Geeta Colony, East Delhi",28.6512,77.2715,"Central River Basin Quality Cell",0.022,0.018,0.0035,0.065,0.09,2.40,2.90,0.031,0.35,"Alluvial sand aquifer near river corridor; non-detect qualifiers and trace metals"
