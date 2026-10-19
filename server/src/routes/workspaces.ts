@@ -4,6 +4,7 @@ import { authenticate, requireWorkspaceRole } from '../middleware/auth.js';
 import { db } from '../db/store.js';
 import { CreateSampleSchema, BIS_10500_2012, STANDARD_REGISTRY } from '@metalsense/shared';
 import { calculateSampleIndices } from '../services/calculation/index.js';
+import { aiService } from '../services/ai/adapter.js';
 
 export const workspacesRouter = Router();
 
@@ -208,6 +209,77 @@ workspacesRouter.get(
     }
 
     res.json({ data: analysis });
+  }
+);
+
+/**
+ * POST /api/v1/workspaces/:workspaceId/samples/:sampleId/explain
+ * Generates an auditable, grounded natural-language explanation of sample analysis.
+ */
+workspacesRouter.post(
+  '/:workspaceId/samples/:sampleId/explain',
+  requireWorkspaceRole('viewer'),
+  async (req: Request, res: Response) => {
+    const sample = db.findSampleById(req.params.sampleId);
+    if (!sample || sample.workspaceId !== req.params.workspaceId) {
+      return res.status(404).json({ error: 'Sample not found in this workspace.' });
+    }
+
+    let analysis = db.analyses.get(sample.id);
+    if (!analysis) {
+      analysis = calculateSampleIndices(sample, {
+        standard: BIS_10500_2012,
+        lodStrategy: 'half_lod',
+      });
+      db.analyses.set(sample.id, analysis);
+    }
+
+    const explanation = await aiService.explainSample(analysis, sample);
+    db.recordAudit(
+      req.params.workspaceId,
+      req.user!.id,
+      'GENERATE_AI_EXPLANATION',
+      'sample',
+      sample.id
+    );
+
+    res.json({ data: explanation });
+  }
+);
+
+/**
+ * POST /api/v1/workspaces/:workspaceId/analyses/compare-summary
+ * Generates a comparative narrative summary across multiple samples in the workspace.
+ */
+workspacesRouter.post(
+  '/:workspaceId/analyses/compare-summary',
+  requireWorkspaceRole('viewer'),
+  async (req: Request, res: Response) => {
+    const allSamples = db.findSamplesByWorkspace(req.params.workspaceId);
+    const requestedIds = req.body?.sampleIds as string[] | undefined;
+
+    const filteredSamples = requestedIds
+      ? allSamples.filter((s) => requestedIds.includes(s.id))
+      : allSamples;
+
+    if (filteredSamples.length === 0) {
+      return res.status(400).json({ error: 'No samples available for comparative summary.' });
+    }
+
+    const items = filteredSamples.map((sample) => {
+      let analysis = db.analyses.get(sample.id);
+      if (!analysis) {
+        analysis = calculateSampleIndices(sample, {
+          standard: BIS_10500_2012,
+          lodStrategy: 'half_lod',
+        });
+        db.analyses.set(sample.id, analysis);
+      }
+      return { sample, analysis };
+    });
+
+    const summary = await aiService.compareSamples(items);
+    res.json({ data: summary });
   }
 );
 
