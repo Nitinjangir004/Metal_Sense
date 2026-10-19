@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { authenticate, requireWorkspaceRole } from '../middleware/auth.js';
 import { db } from '../db/store.js';
-import { CreateSampleSchema, BIS_10500_2012 } from '@metalsense/shared';
+import { CreateSampleSchema, BIS_10500_2012, STANDARD_REGISTRY } from '@metalsense/shared';
 import { calculateSampleIndices } from '../services/calculation/index.js';
 
 export const workspacesRouter = Router();
@@ -144,6 +144,70 @@ workspacesRouter.get(
         analysis,
       },
     });
+  }
+);
+
+/**
+ * POST /api/v1/workspaces/:workspaceId/samples/:sampleId/analyze
+ * Dynamically re-compute pollution indices with selected standard and LOD strategy.
+ */
+workspacesRouter.post(
+  '/:workspaceId/samples/:sampleId/analyze',
+  requireWorkspaceRole('editor'),
+  (req: Request, res: Response) => {
+    const sample = db.findSampleById(req.params.sampleId);
+    if (!sample || sample.workspaceId !== req.params.workspaceId) {
+      return res.status(404).json({ error: 'Sample not found in this workspace.' });
+    }
+
+    const AnalyzeSchema = z.object({
+      standardCode: z.string().default('BIS_10500_2012'),
+      lodStrategy: z.enum(['half_lod', 'zero', 'full_lod']).default('half_lod'),
+    });
+
+    const { standardCode, lodStrategy } = AnalyzeSchema.parse(req.body);
+    const standard = STANDARD_REGISTRY[standardCode] || BIS_10500_2012;
+
+    const analysis = calculateSampleIndices(sample, {
+      standard,
+      lodStrategy,
+    });
+
+    db.analyses.set(sample.id, analysis);
+    db.recordAudit(
+      req.params.workspaceId,
+      req.user!.id,
+      'RECOMPUTE_ANALYSIS',
+      'analysis',
+      analysis.id,
+      { sampleId: sample.id, standardCode: standard.code, lodStrategy }
+    );
+
+    res.json({
+      data: {
+        sample,
+        analysis,
+      },
+    });
+  }
+);
+
+/**
+ * GET /api/v1/workspaces/:workspaceId/analyses/:analysisId
+ */
+workspacesRouter.get(
+  '/:workspaceId/analyses/:analysisId',
+  requireWorkspaceRole('viewer'),
+  (req: Request, res: Response) => {
+    const analysis = Array.from(db.analyses.values()).find(
+      (a) => a.id === req.params.analysisId && a.workspaceId === req.params.workspaceId
+    );
+
+    if (!analysis) {
+      return res.status(404).json({ error: 'Analysis record not found.' });
+    }
+
+    res.json({ data: analysis });
   }
 );
 

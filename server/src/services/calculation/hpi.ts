@@ -100,7 +100,8 @@ export function calculateHpi(
     throw new Error('Insufficient valid heavy metal measurements matching the selected standard.');
   }
 
-  const hpiValue = sumWiQi / sumWi;
+  const rawHpi = sumWiQi / sumWi;
+  const hpiValue = roundToPrecision(rawHpi, 2);
 
   // Standard Prasad & Bose (2001) classification thresholds:
   // HPI < 25: Low pollution
@@ -114,7 +115,7 @@ export function calculateHpi(
   }
 
   return {
-    value: roundToPrecision(hpiValue, 2),
+    value: hpiValue,
     classification,
     thresholdValue: 100,
     traces,

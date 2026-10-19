@@ -81,3 +81,48 @@ When laboratory instruments report measurements below detection threshold ($< \t
 3. **Full LOD (1.0 × LOD):** Conservative upper-bound worst-case screening.
 
 Every report explicitly tags the strategy chosen and applies it uniformly across all sub-index equations.
+
+---
+
+## 4. Worked Numerical Calculation & Invariant Proof
+
+### 4.1 Boundary Invariant: $M_i = S_i$ for all Analytes
+Consider a groundwater sample where all evaluated heavy metals are at their exact statutory permissible limit ($S_i$):
+- For any analyte $i$, $Q_i = \frac{S_i}{S_i} \times 100 = 100$.
+- Substituting into HPI:
+  $$\text{HPI} = \frac{\sum_{i=1}^n W_i \cdot 100}{\sum_{i=1}^n W_i} = \frac{100 \sum W_i}{\sum W_i} = 100.00$$
+- This mathematical invariant is verified in the automated test suite (`tests/unit/worked_examples.test.ts`).
+
+### 4.2 Step-by-Step Numerical Worked Example
+Sample: **Industrial Borewell Well #4 (Delhi Aquifer)**
+Evaluated against **BIS 10500:2012 Drinking Water Specification**:
+
+| Metal ($i$) | Monitored $M_i$ (mg/L) | Permissible $S_i$ (mg/L) | Weight $W_i = 1/S_i$ | Sub-Index $Q_i$ | $W_i \cdot Q_i$ |
+|---|---|---|---|---|---|
+| **Arsenic (As)** | 0.042 | 0.05 | 20.00 | 84.00 | 1680.00 |
+| **Lead (Pb)** | 0.028 | 0.01 | 100.00 | 280.00 | 28000.00 |
+| **Cadmium (Cd)** | 0.0045 | 0.003 | 333.33 | 150.00 | 50000.00 |
+| **Chromium (Cr)**| 0.065 | 0.05 | 20.00 | 130.00 | 2600.00 |
+| **Iron (Fe)** | 1.450 | 1.00 | 1.00 | 145.00 | 145.00 |
+| **Nickel (Ni)** | 0.035 | 0.02 | 50.00 | 175.00 | 8750.00 |
+| **Total Sums** | — | — | **$\sum W_i = 524.33$** | — | **$\sum (W_i Q_i) = 91175.00$** |
+
+$$\text{HPI} = \frac{91175.00}{524.33} = 173.89 \implies \text{High / Critical Pollution (HPI} \ge 100\text{)}$$
+
+$$\text{HEI} = \frac{0.042}{0.05} + \frac{0.028}{0.01} + \frac{0.0045}{0.003} + \frac{0.065}{0.05} + \frac{1.45}{1.00} + \frac{0.035}{0.02} = 0.84 + 2.80 + 1.50 + 1.30 + 1.45 + 1.75 = 9.64$$
+
+---
+
+## 5. Official Regulatory Standard Reference Table
+
+### BIS 10500:2012 (Bureau of Indian Standards)
+- **Arsenic (As):** Acceptable $0.01\text{ mg/L}$, Permissible $0.05\text{ mg/L}$
+- **Cadmium (Cd):** Acceptable $0.003\text{ mg/L}$, Permissible $0.003\text{ mg/L}$ (No relaxation)
+- **Total Chromium (Cr):** Acceptable $0.05\text{ mg/L}$, Permissible $0.05\text{ mg/L}$ (No relaxation)
+- **Copper (Cu):** Acceptable $0.05\text{ mg/L}$, Permissible $1.5\text{ mg/L}$
+- **Iron (Fe):** Acceptable $0.3\text{ mg/L}$, Permissible $1.0\text{ mg/L}$ (2015 amendment)
+- **Lead (Pb):** Acceptable $0.01\text{ mg/L}$, Permissible $0.01\text{ mg/L}$ (No relaxation)
+- **Manganese (Mn):** Acceptable $0.1\text{ mg/L}$, Permissible $0.3\text{ mg/L}$
+- **Nickel (Ni):** Acceptable $0.02\text{ mg/L}$, Permissible $0.02\text{ mg/L}$ (No relaxation)
+- **Zinc (Zn):** Acceptable $5.0\text{ mg/L}$, Permissible $15.0\text{ mg/L}$
+- **Mercury (Hg):** Acceptable $0.001\text{ mg/L}$, Permissible $0.001\text{ mg/L}$ (No relaxation)
