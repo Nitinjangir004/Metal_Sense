@@ -13,12 +13,29 @@ export interface AuditEvent {
   details?: Record<string, unknown>;
 }
 
+export interface ExtractionJob {
+  id: string;
+  workspaceId: string;
+  userId: string;
+  originalFileName: string;
+  fileKey: string;
+  mimeType: string;
+  sizeBytes: number;
+  status: 'pending' | 'processing' | 'ready_for_review' | 'confirmed' | 'failed';
+  proposedData?: any;
+  error?: string;
+  createdAt: string;
+  confirmedAt?: string;
+  createdSampleId?: string;
+}
+
 export class MemoryStore {
   public users: Map<string, User> = new Map();
   public workspaces: Map<string, Workspace> = new Map();
   public projects: Map<string, Project> = new Map();
   public samples: Map<string, Sample> = new Map();
   public analyses: Map<string, AnalysisRun> = new Map();
+  public extractionJobs: Map<string, ExtractionJob> = new Map();
   public auditLogs: AuditEvent[] = [];
 
   constructor() {
@@ -200,6 +217,28 @@ export class MemoryStore {
     return this.auditLogs.filter((a) => a.workspaceId === workspaceId);
   }
 
+  // Extraction Jobs
+  createExtractionJob(data: Omit<ExtractionJob, 'id' | 'createdAt'>): ExtractionJob {
+    const job: ExtractionJob = {
+      id: `job-${crypto.randomUUID()}`,
+      ...data,
+      createdAt: new Date().toISOString(),
+    };
+    this.extractionJobs.set(job.id, job);
+    return job;
+  }
+
+  findExtractionJobById(id: string): ExtractionJob | undefined {
+    return this.extractionJobs.get(id);
+  }
+
+  updateExtractionJob(id: string, updates: Partial<ExtractionJob>): ExtractionJob | undefined {
+    const job = this.extractionJobs.get(id);
+    if (!job) return undefined;
+    Object.assign(job, updates);
+    return job;
+  }
+
   // Reset store for testing
   reset() {
     this.users.clear();
@@ -207,6 +246,7 @@ export class MemoryStore {
     this.projects.clear();
     this.samples.clear();
     this.analyses.clear();
+    this.extractionJobs.clear();
     this.auditLogs = [];
     this.seedDefaultData();
   }

@@ -11,6 +11,7 @@ import { standardsRouter } from './routes/standards.js';
 import { demoRouter } from './routes/demo.js';
 import { authRouter } from './routes/auth.js';
 import { workspacesRouter } from './routes/workspaces.js';
+import { importsRouter } from './routes/imports.js';
 
 export const app = express();
 
@@ -49,6 +50,7 @@ api.use('/standards', standardsRouter);
 api.use('/demo', demoRouter);
 api.use('/auth', authRouter);
 api.use('/workspaces', workspacesRouter);
+api.use('/imports', importsRouter);
 
 app.use(env.API_PREFIX, api);
 
