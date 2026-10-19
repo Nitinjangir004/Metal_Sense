@@ -32,6 +32,7 @@ export function App() {
         <Route path="map" element={<MapPage />} />
         <Route path="standards" element={<StandardsRegistryPage />} />
         <Route path="reports" element={<ReportsPage />} />
+        <Route path="methodology" element={<MethodologyPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 
