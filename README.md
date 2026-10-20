@@ -83,6 +83,9 @@ d:\NSP\
 
 ## 4. Getting Started
 
+> [!IMPORTANT]
+> **Environment & Security Notice:** Create your own `.env` from `.env.example`. Never share it.
+
 ### Local Development Setup
 
 ```bash

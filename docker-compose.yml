@@ -12,12 +12,16 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=5000
-      - CLIENT_ORIGIN=http://localhost:5000
+      - CLIENT_ORIGIN=${CLIENT_ORIGIN:-http://localhost:5000}
       - API_PREFIX=/api/v1
-      - SESSION_SECRET=production_super_secret_jwt_key_at_least_32_characters_long
-      - MONGODB_URI=mongodb://mongodb:27017/metalsense
+      - SESSION_SECRET=${SESSION_SECRET}
+      - MONGODB_URI=mongodb://${MONGO_ROOT_USER:-metalsense_admin}:${MONGO_ROOT_PASSWORD:-metalsense_secure_mongo_password}@mongodb:27017/metalsense?authSource=admin
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - LOCAL_UPLOAD_DIR=/app/uploads
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
       mongodb:
         condition: service_healthy
@@ -28,14 +32,16 @@ services:
     image: mongo:7-jammy
     container_name: metalsense-mongodb
     restart: unless-stopped
-    ports:
-      - "27017:27017"
+    # 27017 is not published to host for security; accessible only via internal network
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USER:-metalsense_admin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-metalsense_secure_mongo_password}
     volumes:
       - mongodb_data:/data/db
     networks:
       - metalsense-network
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD", "mongosh", "-u", "${MONGO_ROOT_USER:-metalsense_admin}", "-p", "${MONGO_ROOT_PASSWORD:-metalsense_secure_mongo_password}", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -46,4 +52,6 @@ networks:
 
 volumes:
   mongodb_data:
+    driver: local
+  uploads_data:
     driver: local

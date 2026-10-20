@@ -28,7 +28,7 @@ describe('Sample Entry & File Ingestion Test Suite', () => {
     expect(res.headers['content-type']).toContain('text/csv');
     expect(res.headers['content-disposition']).toContain('attachment');
     expect(res.text).toContain('SampleCode');
-    expect(res.text).toContain('fictional benchmark');
+    expect(res.text).toContain('EXAMPLE-DELETE-ME');
   });
 
   it('POST /api/v1/imports/:ws/csv processes valid CSV and generates deterministic calculations', async () => {

@@ -43,6 +43,9 @@ COPY --from=builder /app/shared/dist ./shared/dist
 COPY --from=builder /app/server/dist ./server/dist
 COPY --from=builder /app/client/dist ./client/dist
 
+# Create uploads directory owned by metalsense user
+RUN mkdir -p /app/uploads && chown -R metalsense:metalsense /app/uploads
+
 # Switch to non-root user
 USER metalsense
 

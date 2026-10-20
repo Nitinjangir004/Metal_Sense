@@ -66,9 +66,13 @@ authRouter.post('/google', async (req: Request, res: Response) => {
 
 /**
  * POST /api/v1/auth/dev-login
- * Automated test & sandbox login (for CI, Playwright, and local staging without live Google credentials).
+ * Automated test & sandbox login (strictly gated to NODE_ENV === 'test').
  */
 authRouter.post('/dev-login', (req: Request, res: Response) => {
+  if (process.env.NODE_ENV !== 'test') {
+    return res.status(404).json({ error: 'Endpoint not found.' });
+  }
+
   const { email, name, role } = DevLoginPayloadSchema.parse(req.body);
 
   let user = db.findUserByEmail(email);

@@ -1,10 +1,12 @@
-import multer from 'multer';
+import multer, { FileFilterCallback } from 'multer';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
 import { Request } from 'express';
 
-const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads');
+const UPLOAD_DIR = process.env.LOCAL_UPLOAD_DIR
+  ? path.resolve(process.env.LOCAL_UPLOAD_DIR)
+  : path.resolve(process.cwd(), 'uploads');
 
 // Ensure upload directory exists
 if (!fs.existsSync(UPLOAD_DIR)) {
@@ -21,10 +23,18 @@ const ALLOWED_MIME_TYPES = new Set([
 ]);
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
+  destination: (
+    req: Request,
+    file: Express.Multer.File,
+    cb: (error: Error | null, destination: string) => void
+  ) => {
     cb(null, UPLOAD_DIR);
   },
-  filename: (req, file, cb) => {
+  filename: (
+    req: Request,
+    file: Express.Multer.File,
+    cb: (error: Error | null, filename: string) => void
+  ) => {
     // Generate unguessable safe storage key preventing directory traversal
     const safeExt = path.extname(file.originalname).toLowerCase();
     const sanitizedBase = path
@@ -39,7 +49,7 @@ const storage = multer.diskStorage({
 const fileFilter = (
   req: Request,
   file: Express.Multer.File,
-  cb: multer.FileFilterCallback
+  cb: FileFilterCallback
 ) => {
   if (ALLOWED_MIME_TYPES.has(file.mimetype.toLowerCase())) {
     cb(null, true);
@@ -51,6 +61,56 @@ const fileFilter = (
     );
   }
 };
+
+/**
+ * Validates the magic bytes of an uploaded file against its reported MIME type.
+ * Protects against MIME spoofing and malicious binary uploads.
+ */
+export function verifyFileMagicBytes(filePath: string, reportedMime: string): boolean {
+  if (!fs.existsSync(filePath)) return false;
+
+  const buffer = Buffer.alloc(12);
+  const fd = fs.openSync(filePath, 'r');
+  const bytesRead = fs.readSync(fd, buffer, 0, 12, 0);
+  fs.closeSync(fd);
+
+  if (bytesRead < 4) return false;
+
+  const mime = reportedMime.toLowerCase();
+
+  // PDF signature: %PDF (0x25 0x50 0x44 0x46)
+  if (mime === 'application/pdf') {
+    return buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46;
+  }
+
+  // PNG signature: 0x89 0x50 0x4E 0x47
+  if (mime === 'image/png') {
+    return buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47;
+  }
+
+  // JPEG signature: 0xFF 0xD8 0xFF
+  if (mime === 'image/jpeg' || mime === 'image/jpg') {
+    return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  }
+
+  // WebP signature: RIFF....WEBP
+  if (mime === 'image/webp') {
+    return (
+      buffer.toString('ascii', 0, 4) === 'RIFF' &&
+      buffer.toString('ascii', 8, 12) === 'WEBP'
+    );
+  }
+
+  // CSV / text: Reject any file containing null bytes (0x00)
+  if (mime === 'text/csv' || mime === 'text/plain') {
+    for (let i = 0; i < bytesRead; i++) {
+      if (buffer[i] === 0x00) return false;
+    }
+    return true;
+  }
+
+  return false;
+}
 
 export const uploadMiddleware = multer({
   storage,

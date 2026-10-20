@@ -1,6 +1,7 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -45,6 +46,17 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
+// Stricter rate limiting on authentication routes (10 requests per 15 minutes)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many authentication attempts, please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => process.env.NODE_ENV === 'test',
+});
+app.use(`${env.API_PREFIX}/auth`, authLimiter);
+
 // Versioned API Routes
 const api = express.Router();
 api.use('/health', healthRouter);
@@ -56,12 +68,20 @@ api.use('/imports', importsRouter);
 
 app.use(env.API_PREFIX, api);
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // Production Static Client Bundle Serving
 if (env.NODE_ENV === 'production') {
-  const clientDist = path.resolve(process.cwd(), '../client/dist');
-  if (fs.existsSync(clientDist)) {
+  const possibleClientPaths = [
+    path.resolve(__dirname, '../../client/dist'),
+    path.resolve(process.cwd(), 'client/dist'),
+    path.resolve(process.cwd(), '../client/dist'),
+  ];
+  const clientDist = possibleClientPaths.find((p) => fs.existsSync(p));
+  if (clientDist) {
     app.use(express.static(clientDist));
-    app.get('*', (req, res, next) => {
+    app.get('*', (req: Request, res: Response, next: NextFunction) => {
       if (req.path.startsWith('/api')) return next();
       res.sendFile(path.join(clientDist, 'index.html'));
     });

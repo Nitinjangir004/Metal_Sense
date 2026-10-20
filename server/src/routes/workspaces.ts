@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { authenticate, requireWorkspaceRole } from '../middleware/auth.js';
 import { db } from '../db/store.js';
@@ -327,7 +327,7 @@ workspacesRouter.get(
 workspacesRouter.get(
   '/:workspaceId/reports/pdf',
   requireWorkspaceRole('viewer'),
-  async (req: Request, res: Response, next) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ws = db.findWorkspaceById(req.params.workspaceId);
       if (!ws) {
@@ -374,7 +374,7 @@ workspacesRouter.get(
 workspacesRouter.get(
   '/:workspaceId/samples/:sampleId/reports/pdf',
   requireWorkspaceRole('viewer'),
-  async (req: Request, res: Response, next) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const ws = db.findWorkspaceById(req.params.workspaceId);
       const sample = db.findSampleById(req.params.sampleId);

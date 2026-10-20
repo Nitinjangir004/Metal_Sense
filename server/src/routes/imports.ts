@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { authenticate, requireWorkspaceRole } from '../middleware/auth.js';
-import { uploadMiddleware } from '../middleware/upload.js';
+import { uploadMiddleware, verifyFileMagicBytes } from '../middleware/upload.js';
 import { generateCsvTemplate } from '../services/ingestion/template.js';
 import { parseSamplesCsv } from '../services/ingestion/csvParser.js';
 import { defaultDocumentExtractor } from '../services/extraction/adapter.js';
@@ -42,6 +42,10 @@ importsRouter.post(
     let fileName = 'upload.csv';
 
     if (req.file) {
+      if (!verifyFileMagicBytes(req.file.path, req.file.mimetype)) {
+        try { fs.unlinkSync(req.file.path); } catch {}
+        return res.status(400).json({ error: 'Uploaded file signature does not match CSV/text format.' });
+      }
       csvText = fs.readFileSync(req.file.path, 'utf8');
       fileName = req.file.originalname;
     } else if (req.body?.csvText) {
@@ -106,6 +110,11 @@ importsRouter.post(
   async (req: Request, res: Response) => {
     if (!req.file) {
       return res.status(400).json({ error: 'No document file uploaded.' });
+    }
+
+    if (!verifyFileMagicBytes(req.file.path, req.file.mimetype)) {
+      try { fs.unlinkSync(req.file.path); } catch {}
+      return res.status(400).json({ error: 'Uploaded file signature does not match expected PDF/Image format.' });
     }
 
     const job = db.createExtractionJob({
