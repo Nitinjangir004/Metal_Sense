@@ -4,64 +4,65 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Scientific Navy / Deep Teal foundation tokens
-        slate: {
-          850: '#151e2e',
-          900: '#0f172a',
-          950: '#080d1a',
+        // Soft Mint & Deep Forest Green Palette (Template Specification)
+        forest: {
+          900: '#002F18', // Primary ink, selected pills, headings
+          800: '#063D21',
+          700: '#0B4A2C', // Hover / pressed state
+          600: '#1D6440',
+          500: '#2E7D55', // Icons, links, accents
         },
-        navy: {
-          950: '#070f1e',
-          900: '#0c1b33',
-          800: '#11294d',
-          700: '#1a3c6e',
-          600: '#235194',
+        mint: {
+          50: '#F0FCEF',  // Raised surfaces, pill inputs, chips
+          100: '#E9F4EA', // App page background
+          150: '#ECF5EB', // Main card background
+          200: '#DFEADD', // Inset panels, table headers, sidebar
+          300: '#DDEBDB', // Unselected pills, dividers
+          400: '#BED4BC',
         },
-        teal: {
-          950: '#042f2e',
-          900: '#134e4a',
-          800: '#115e59',
-          700: '#0f766e',
-          600: '#0d9488',
-          500: '#14b8a6',
-          400: '#2dd4bf',
-          300: '#5eead4',
+        ink: {
+          900: '#0F1F17', // Headings, titles
+          700: '#2C3E34',
+          600: '#4B5F54', // Body text
+          400: '#7C8F84', // Captions & subtle text
+          300: '#A3B4AA',
         },
-        cyan: {
-          400: '#22d3ee',
-          500: '#06b6d4',
-          600: '#0891b2',
-        },
-        // Semantic scientific status tokens
         status: {
-          safe: '#059669', // Emerald
-          moderate: '#d97706', // Amber
-          high: '#dc2626', // Crimson Red
-          unverified: '#64748b', // Slate
+          safe: '#1F8A5B',
+          'safe-bg': '#DDF3E6',
+          warning: '#B7791F',
+          'warning-bg': '#FBF0D6',
+          critical: '#C2413B',
+          'critical-bg': '#FBE3E1',
         },
       },
       fontFamily: {
         sans: [
-          'Inter',
+          'Urbanist',
+          'Outfit',
           '-apple-system',
           'BlinkMacSystemFont',
           'Segoe UI',
           'Roboto',
-          'Helvetica Neue',
           'sans-serif',
         ],
         mono: [
           'JetBrains Mono',
           'Fira Code',
           'ui-monospace',
-          'SFMono-Regular',
           'monospace',
         ],
       },
+      borderRadius: {
+        card: '28px',
+        panel: '20px',
+        pill: '9999px',
+      },
       boxShadow: {
-        subtle: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)',
-        card: '0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
-        elevated: '0 10px 15px -3px rgba(0, 0, 0, 0.12), 0 4px 6px -4px rgba(0, 0, 0, 0.08)',
+        soft: '0 8px 24px rgba(0, 47, 24, 0.06)',
+        card: '0 4px 16px rgba(0, 47, 24, 0.04)',
+        elevated: '0 12px 32px rgba(0, 47, 24, 0.08)',
+        pill: '0 2px 8px rgba(0, 47, 24, 0.1)',
       },
     },
   },

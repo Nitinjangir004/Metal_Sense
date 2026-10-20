@@ -15,24 +15,24 @@ export function Alert({
   ...props
 }: AlertProps) {
   const variants = {
-    info: 'bg-cyan-950/40 border-cyan-800/80 text-cyan-200',
-    success: 'bg-emerald-950/40 border-emerald-800/80 text-emerald-200',
-    warning: 'bg-amber-950/40 border-amber-800/80 text-amber-200',
-    danger: 'bg-rose-950/40 border-rose-800/80 text-rose-200',
+    info: 'bg-[#F0FCEF] border-[#BED4BC] text-[#002F18]',
+    success: 'bg-[#DDF3E6] border-[#A6E1BE] text-[#1F8A5B]',
+    warning: 'bg-[#FBF0D6] border-[#F5DC9A] text-[#B7791F]',
+    danger: 'bg-[#FBE3E1] border-[#F6BDB8] text-[#C2413B]',
   };
 
   const icons = {
-    info: <Info className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />,
-    success: <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />,
-    warning: <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />,
-    danger: <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />,
+    info: <Info className="w-5 h-5 text-[#2E7D55] shrink-0 mt-0.5" />,
+    success: <CheckCircle className="w-5 h-5 text-[#1F8A5B] shrink-0 mt-0.5" />,
+    warning: <AlertTriangle className="w-5 h-5 text-[#B7791F] shrink-0 mt-0.5" />,
+    danger: <AlertCircle className="w-5 h-5 text-[#C2413B] shrink-0 mt-0.5" />,
   };
 
   return (
     <div
       role="alert"
       className={cn(
-        'flex items-start gap-3 rounded-lg border p-4 text-sm backdrop-blur-sm',
+        'flex items-start gap-3 rounded-[20px] border p-4 text-sm shadow-card',
         variants[variant],
         className
       )}
@@ -40,8 +40,8 @@ export function Alert({
     >
       {icons[variant]}
       <div className="flex-1 space-y-1">
-        {title && <h5 className="font-semibold leading-tight">{title}</h5>}
-        <div className="text-xs sm:text-sm leading-relaxed opacity-90">{children}</div>
+        {title && <h5 className="font-bold leading-tight">{title}</h5>}
+        <div className="text-xs sm:text-sm leading-relaxed">{children}</div>
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'icon';
   isLoading?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
@@ -26,25 +26,26 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:opacity-50 disabled:pointer-events-none select-none';
+      'inline-flex items-center justify-center font-semibold rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002F18] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E9F4EA] disabled:opacity-50 disabled:pointer-events-none select-none active:scale-[0.98]';
 
     const variants = {
       primary:
-        'bg-teal-600 hover:bg-teal-500 text-white shadow-sm shadow-teal-950 active:bg-teal-700',
+        'bg-[#002F18] hover:bg-[#0B4A2C] text-white shadow-soft',
       secondary:
-        'bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700/60 active:bg-slate-850',
+        'bg-[#DFEADD] hover:bg-[#DDEBDB] text-[#002F18] border border-[#BED4BC]/40 shadow-sm',
       outline:
-        'border border-slate-700 text-slate-200 hover:bg-slate-800/80 active:bg-slate-800',
+        'border border-[#BED4BC] text-[#002F18] bg-transparent hover:bg-[#DFEADD]/60',
       ghost:
-        'text-slate-300 hover:bg-slate-800/60 hover:text-white active:bg-slate-800',
+        'text-[#002F18] hover:bg-[#DFEADD]/40 active:bg-[#DFEADD]/70',
       danger:
-        'bg-rose-600 hover:bg-rose-500 text-white shadow-sm shadow-rose-950 active:bg-rose-700',
+        'bg-[#C2413B] hover:bg-[#A9322D] text-white shadow-soft',
     };
 
     const sizes = {
-      sm: 'h-8 px-3 text-xs gap-1.5',
-      md: 'h-9 px-4 text-sm gap-2',
-      lg: 'h-11 px-6 text-base gap-2.5',
+      sm: 'h-8 px-3.5 text-xs gap-1.5',
+      md: 'h-10 px-5 text-sm gap-2',
+      lg: 'h-12 px-6 text-base gap-2.5',
+      icon: 'h-10 w-10 p-0 rounded-full',
     };
 
     return (
@@ -55,11 +56,11 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {...props}
       >
         {isLoading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
+          <Loader2 className="w-4 h-4 animate-spin text-current" />
         ) : (
           leftIcon && <span className="inline-flex shrink-0">{leftIcon}</span>
         )}
-        <span>{children}</span>
+        {children && <span>{children}</span>}
         {!isLoading && rightIcon && (
           <span className="inline-flex shrink-0">{rightIcon}</span>
         )}

@@ -14,21 +14,21 @@ export function Badge({
   ...props
 }: BadgeProps) {
   const baseStyles =
-    'inline-flex items-center font-medium rounded-full border tracking-wide transition-colors select-none';
+    'inline-flex items-center font-semibold rounded-full border tracking-wide transition-colors select-none';
 
   const variants = {
-    default: 'bg-slate-800 text-slate-200 border-slate-700/80',
-    outline: 'bg-transparent text-slate-300 border-slate-700',
-    safe: 'bg-emerald-950/70 text-emerald-300 border-emerald-800/80',
-    moderate: 'bg-amber-950/70 text-amber-300 border-amber-800/80',
-    high: 'bg-rose-950/70 text-rose-300 border-rose-800/80',
-    unverified: 'bg-slate-800/70 text-slate-400 border-slate-700/60 border-dashed',
-    cyan: 'bg-cyan-950/70 text-cyan-300 border-cyan-800/80',
+    default: 'bg-white text-[#002F18] border-[#DFEADD] shadow-sm',
+    outline: 'bg-transparent text-[#002F18] border-[#BED4BC]',
+    safe: 'bg-[#DDF3E6] text-[#1F8A5B] border-[#A6E1BE]',
+    moderate: 'bg-[#FBF0D6] text-[#B7791F] border-[#F5DC9A]',
+    high: 'bg-[#FBE3E1] text-[#C2413B] border-[#F6BDB8]',
+    unverified: 'bg-[#F0FCEF] text-[#7C8F84] border-[#DFEADD] border-dashed',
+    cyan: 'bg-white text-[#002F18] border-[#DFEADD] shadow-sm font-bold',
   };
 
   const sizes = {
-    sm: 'text-[11px] px-2 py-0.5 gap-1',
-    md: 'text-xs px-2.5 py-1 gap-1.5',
+    sm: 'text-[11px] px-2.5 py-0.5 gap-1',
+    md: 'text-xs px-3 py-1 gap-1.5',
   };
 
   return (
