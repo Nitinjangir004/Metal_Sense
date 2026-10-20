@@ -1,6 +1,6 @@
 /**
  * Generates official, downloadable CSV template for laboratory data ingestion.
- * Contains standard column headers and a single clearly labelled example row.
+ * Standard RFC 4180 format with column headers on line 1.
  */
 export function generateCsvTemplate(): string {
   const headers = [
@@ -27,7 +27,7 @@ export function generateCsvTemplate(): string {
     'EXAMPLE-DELETE-ME',
     'groundwater',
     '2026-03-20T10:00:00Z',
-    'Example Sampling Well #1',
+    'Central Monitoring Station Well #1',
     'Central District',
     '28.5284',
     '77.2758',
@@ -44,8 +44,6 @@ export function generateCsvTemplate(): string {
   ];
 
   const lines = [
-    '# MetalSense Laboratory CSV Ingestion Template',
-    '# Instructions: Standard units are mg/L. Enter below-detection values as <0.001. Delete example row before uploading.',
     headers.join(','),
     exampleRow.map((c) => (c.includes(',') ? `"${c}"` : c)).join(','),
   ];

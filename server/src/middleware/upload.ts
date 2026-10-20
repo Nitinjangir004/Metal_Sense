@@ -17,9 +17,17 @@ const ALLOWED_MIME_TYPES = new Set([
   'application/pdf',
   'image/png',
   'image/jpeg',
+  'image/jpg',
   'image/webp',
   'text/csv',
   'text/plain',
+  'application/vnd.ms-excel',
+  'application/csv',
+  'text/x-csv',
+  'application/x-csv',
+  'text/comma-separated-values',
+  'text/x-comma-separated-values',
+  'application/octet-stream',
 ]);
 
 const storage = multer.diskStorage({
@@ -51,12 +59,17 @@ const fileFilter = (
   file: Express.Multer.File,
   cb: FileFilterCallback
 ) => {
-  if (ALLOWED_MIME_TYPES.has(file.mimetype.toLowerCase())) {
+  const mime = file.mimetype.toLowerCase();
+  const ext = path.extname(file.originalname).toLowerCase();
+  const isCsvExt = ext === '.csv';
+  const isDocExt = ext === '.pdf' || ext === '.png' || ext === '.jpg' || ext === '.jpeg' || ext === '.webp';
+
+  if (ALLOWED_MIME_TYPES.has(mime) || isCsvExt || isDocExt) {
     cb(null, true);
   } else {
     cb(
       new Error(
-        `Unsupported file type '${file.mimetype}'. Allowed types: PDF, PNG, JPEG, WebP, CSV.`
+        `Unsupported file type '${file.mimetype}'. Allowed types: CSV, PDF, PNG, JPEG, WebP.`
       )
     );
   }
@@ -77,32 +90,41 @@ export function verifyFileMagicBytes(filePath: string, reportedMime: string): bo
   if (bytesRead < 4) return false;
 
   const mime = reportedMime.toLowerCase();
+  const ext = path.extname(filePath).toLowerCase();
 
   // PDF signature: %PDF (0x25 0x50 0x44 0x46)
-  if (mime === 'application/pdf') {
+  if (mime === 'application/pdf' || ext === '.pdf') {
     return buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46;
   }
 
   // PNG signature: 0x89 0x50 0x4E 0x47
-  if (mime === 'image/png') {
+  if (mime === 'image/png' || ext === '.png') {
     return buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47;
   }
 
   // JPEG signature: 0xFF 0xD8 0xFF
-  if (mime === 'image/jpeg' || mime === 'image/jpg') {
+  if (mime === 'image/jpeg' || mime === 'image/jpg' || ext === '.jpg' || ext === '.jpeg') {
     return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
   }
 
   // WebP signature: RIFF....WEBP
-  if (mime === 'image/webp') {
+  if (mime === 'image/webp' || ext === '.webp') {
     return (
       buffer.toString('ascii', 0, 4) === 'RIFF' &&
       buffer.toString('ascii', 8, 12) === 'WEBP'
     );
   }
 
-  // CSV / text: Reject any file containing null bytes (0x00)
-  if (mime === 'text/csv' || mime === 'text/plain') {
+  // CSV / text / spreadsheet: Reject any file containing null bytes (0x00)
+  const isCsvOrText =
+    mime.includes('csv') ||
+    mime.includes('excel') ||
+    mime.includes('text') ||
+    mime === 'application/octet-stream' ||
+    ext === '.csv' ||
+    ext === '.txt';
+
+  if (isCsvOrText) {
     for (let i = 0; i < bytesRead; i++) {
       if (buffer[i] === 0x00) return false;
     }

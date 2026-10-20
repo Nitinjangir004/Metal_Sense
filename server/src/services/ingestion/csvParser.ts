@@ -18,9 +18,36 @@ export interface ParsedCsvResult {
 }
 
 /**
- * Parses raw CSV lines conforming to RFC 4180 with support for quotes and escaped characters.
+ * Detects the most probable delimiter: comma, semicolon, or tab.
  */
-function parseCsvLine(line: string): string[] {
+function detectDelimiter(text: string): string {
+  const lines = text.split(/\r?\n/).slice(0, 10);
+  let commaCount = 0;
+  let semiCount = 0;
+  let tabCount = 0;
+
+  for (const line of lines) {
+    if (!line.trim() || line.trim().startsWith('#')) continue;
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === '"') inQuotes = !inQuotes;
+      else if (!inQuotes) {
+        if (line[i] === ',') commaCount++;
+        else if (line[i] === ';') semiCount++;
+        else if (line[i] === '\t') tabCount++;
+      }
+    }
+  }
+
+  if (semiCount > commaCount && semiCount > tabCount) return ';';
+  if (tabCount > commaCount && tabCount > semiCount) return '\t';
+  return ',';
+}
+
+/**
+ * Parses raw CSV lines conforming to RFC 4180 with support for quotes, escaped characters, and custom delimiters.
+ */
+function parseCsvLine(line: string, delimiter: string = ','): string[] {
   const result: string[] = [];
   let current = '';
   let inQuotes = false;
@@ -34,7 +61,7 @@ function parseCsvLine(line: string): string[] {
       } else {
         inQuotes = !inQuotes;
       }
-    } else if (char === ',' && !inQuotes) {
+    } else if (char === delimiter && !inQuotes) {
       result.push(current.trim());
       current = '';
     } else {
@@ -44,6 +71,18 @@ function parseCsvLine(line: string): string[] {
   result.push(current.trim());
   return result;
 }
+
+const METADATA_HEADERS = new Set([
+  'samplecode', 'sample_code', 'sampleid', 'sample_id', 'id', 'code', 'sample', 'station', 'stationid', 'station_id',
+  'locationname', 'location_name', 'location', 'site', 'well', 'well_id', 'point',
+  'district', 'area', 'city', 'state', 'region', 'taluk', 'block',
+  'labname', 'lab_name', 'laboratory', 'lab', 'analyst',
+  'reportnumber', 'report_number', 'reportno', 'report_no', 'report', 'batch', 'certificateno',
+  'collectiondate', 'collection_date', 'date', 'sampled_at', 'sampledate', 'time',
+  'samplematrix', 'sample_matrix', 'matrix', 'type', 'source',
+  'latitude', 'lat', 'y', 'longitude', 'lng', 'long', 'x',
+  'notes', 'remarks', 'comment', 'comments', 'description'
+]);
 
 /**
  * Extracts numeric value, qualifier (=, <, <=), and unit from a cell string.
@@ -107,15 +146,17 @@ function parseAnalyteCell(cell: string): {
  */
 function matchAnalyteHeader(header: string): { symbol: MetalSymbol; unit: ConcentrationUnit } | null {
   const clean = header.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (METADATA_HEADERS.has(clean)) return null;
 
   for (const [sym, def] of Object.entries(CANONICAL_METALS)) {
     const symbolLower = sym.toLowerCase();
     const nameLower = def.name.toLowerCase();
 
     if (
+      clean === symbolLower ||
+      clean === nameLower ||
       clean.startsWith(symbolLower) ||
-      clean.startsWith(nameLower) ||
-      clean.includes(symbolLower)
+      clean.startsWith(nameLower)
     ) {
       // Detect unit if specified in header
       let unit: ConcentrationUnit = 'mg/L';
@@ -135,12 +176,22 @@ export function parseSamplesCsv(
   projectId: string,
   fileName: string = 'imported.csv'
 ): ParsedCsvResult {
-  const lines = csvContent
+  // 1. Strip UTF-8 BOM
+  csvContent = csvContent.replace(/^\uFEFF/, '').trim();
+
+  // 2. Detect delimiter (comma, semicolon, tab)
+  const delimiter = detectDelimiter(csvContent);
+
+  const rawLines = csvContent
     .split(/\r?\n/)
     .map((l) => l.trim())
-    .filter((l) => l.length > 0 && !l.startsWith('#'));
+    .filter((l) => {
+      if (l.length === 0) return false;
+      const stripped = l.replace(/^["']/, '');
+      return !stripped.startsWith('#') && !stripped.startsWith('//');
+    });
 
-  if (lines.length < 2) {
+  if (rawLines.length < 2) {
     return {
       totalRows: 0,
       validCount: 0,
@@ -150,7 +201,24 @@ export function parseSamplesCsv(
     };
   }
 
-  const headers = parseCsvLine(lines[0]);
+  // 3. Find header row: scan until we find a line with sample identifier or metal columns
+  let headerRowIndex = 0;
+  for (let i = 0; i < Math.min(rawLines.length, 10); i++) {
+    const testRow = parseCsvLine(rawLines[i], delimiter).map((c) =>
+      c.toLowerCase().replace(/[^a-z0-9]/g, '')
+    );
+    const hasSampleId = testRow.some((c) =>
+      ['samplecode', 'sampleid', 'id', 'code', 'sample', 'station', 'stationid', 'well'].includes(c)
+    );
+    const hasMetals = testRow.some((c) => matchAnalyteHeader(c) !== null);
+
+    if (hasSampleId || hasMetals) {
+      headerRowIndex = i;
+      break;
+    }
+  }
+
+  const headers = parseCsvLine(rawLines[headerRowIndex], delimiter);
   const headerMap: Record<string, number> = {};
   const analyteColumns: { index: number; symbol: MetalSymbol; unit: ConcentrationUnit }[] = [];
 
@@ -177,22 +245,43 @@ export function parseSamplesCsv(
   const samples: Omit<Sample, 'id' | 'createdAt' | 'updatedAt'>[] = [];
   const errors: { rowNumber: number; sampleCode?: string; message: string }[] = [];
 
-  for (let i = 1; i < lines.length; i++) {
+  for (let i = headerRowIndex + 1; i < rawLines.length; i++) {
     const rowNum = i + 1;
-    const row = parseCsvLine(lines[i]);
+    const row = parseCsvLine(rawLines[i], delimiter);
     if (row.length === 0 || row.every((c) => c === '')) continue;
 
-    const sampleCode = getCol(row, 'samplecode', 'sampleid', 'id', 'code');
+    const sampleCode = getCol(
+      row,
+      'samplecode',
+      'sample_code',
+      'sampleid',
+      'sample_id',
+      'id',
+      'code',
+      'station',
+      'stationid',
+      'well'
+    );
     if (!sampleCode) {
       errors.push({ rowNumber: rowNum, message: 'Missing required Sample Identifier / Code.' });
       continue;
     }
 
-    const locationName = getCol(row, 'locationname', 'location', 'site', 'well') || 'Unspecified Location';
+    // Ignore placeholder/example rows
+    if (
+      sampleCode.toUpperCase().includes('EXAMPLE-DELETE-ME') ||
+      sampleCode.toUpperCase() === 'EXAMPLE'
+    ) {
+      continue;
+    }
+
+    const locationName =
+      getCol(row, 'locationname', 'location_name', 'location', 'site', 'well', 'point') ||
+      'Unspecified Location';
     const district = getCol(row, 'district', 'area', 'city');
-    const labName = getCol(row, 'labname', 'laboratory', 'lab');
-    const dateStr = getCol(row, 'collectiondate', 'date', 'sampled_at');
-    const matrixStr = getCol(row, 'samplematrix', 'matrix', 'type').toLowerCase();
+    const labName = getCol(row, 'labname', 'lab_name', 'laboratory', 'lab');
+    const dateStr = getCol(row, 'collectiondate', 'collection_date', 'date', 'sampled_at');
+    const matrixStr = getCol(row, 'samplematrix', 'sample_matrix', 'matrix', 'type').toLowerCase();
 
     // Matrix
     let sampleMatrix: SampleMatrix = 'groundwater';
@@ -258,7 +347,7 @@ export function parseSamplesCsv(
       errors.push({
         rowNumber: rowNum,
         sampleCode,
-        message: 'No valid heavy-metal analyte concentrations found in row.',
+        message: 'No valid heavy metal analyte measurements identified in row.',
       });
       continue;
     }
@@ -278,8 +367,16 @@ export function parseSamplesCsv(
         country: 'India',
         isSensitive: false,
       },
-      laboratory: labName ? { name: labName } : undefined,
+      laboratory: labName
+        ? {
+            name: labName,
+            reportNumber:
+              getCol(row, 'reportnumber', 'report_number', 'reportno', 'report_no', 'report') ||
+              undefined,
+          }
+        : undefined,
       measurements,
+      notes: getCol(row, 'notes', 'remarks', 'comment', 'comments') || undefined,
       provenance: {
         method: 'csv_import',
         originalFileName: fileName,
@@ -290,7 +387,7 @@ export function parseSamplesCsv(
   }
 
   return {
-    totalRows: lines.length - 1,
+    totalRows: samples.length + errors.length,
     validCount: samples.length,
     errorCount: errors.length,
     samples,

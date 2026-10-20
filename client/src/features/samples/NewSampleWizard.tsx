@@ -112,17 +112,38 @@ export function NewSampleWizard() {
   };
 
   const handleProcessCsvFile = async (file: File) => {
+    if (!workspaceId) {
+      setFeedback({
+        type: 'error',
+        message: 'No active workspace loaded. Please select or reload your workspace.',
+      });
+      return;
+    }
+
     setCsvFile(file);
     setFeedback(null);
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
-      const preview = await previewCsvMutation.mutateAsync(formData);
+      // 1. Read CSV text directly in browser to ensure 100% reliability across all OS and spreadsheet MIME types
+      const text = await file.text();
+      const preview = await previewCsvMutation.mutateAsync({
+        csvText: text,
+        fileName: file.name,
+      });
       setCsvPreviewData(preview);
     } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || 'Failed to preview CSV file.' });
+      // 2. Fallback to multipart FormData if needed
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const preview = await previewCsvMutation.mutateAsync(formData);
+        setCsvPreviewData(preview);
+      } catch (fallbackErr: any) {
+        setFeedback({
+          type: 'error',
+          message: err.message || fallbackErr.message || 'Failed to preview CSV file.',
+        });
+      }
     }
   };
 
@@ -597,7 +618,7 @@ export function NewSampleWizard() {
             <input
               type="file"
               ref={fileInputRef}
-              accept=".csv,text/csv"
+              accept=".csv,text/csv,text/plain,application/vnd.ms-excel"
               className="hidden"
               onChange={handleFileChange}
             />

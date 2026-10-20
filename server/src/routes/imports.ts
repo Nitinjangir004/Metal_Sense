@@ -7,7 +7,7 @@ import { parseSamplesCsv } from '../services/ingestion/csvParser.js';
 import { defaultDocumentExtractor } from '../services/extraction/adapter.js';
 import { calculateSampleIndices } from '../services/calculation/index.js';
 import { db } from '../db/store.js';
-import { BIS_10500_2012, AnalyteMeasurementSchema } from '@metalsense/shared';
+import { BIS_10500_2012, WHO_GDWQ_4TH_ED, LODHandlingStrategy, AnalyteMeasurementSchema } from '@metalsense/shared';
 import fs from 'fs';
 
 export const importsRouter = Router();
@@ -136,13 +136,20 @@ importsRouter.post(
       fileName
     );
 
+    const ws = await db.findWorkspaceById(req.params.workspaceId);
+    let standard = BIS_10500_2012;
+    if (ws?.defaultStandard === 'WHO_GDWQ_4TH') {
+      standard = WHO_GDWQ_4TH_ED;
+    }
+    const lodStrategy: LODHandlingStrategy = (ws?.defaultLodStrategy as LODHandlingStrategy) || 'half_lod';
+
     // Save valid samples and execute calculations
     const created = [];
     for (const sampleData of parseResult.samples) {
       const sample = await db.createSample(sampleData);
       const analysis = calculateSampleIndices(sample, {
-        standard: BIS_10500_2012,
-        lodStrategy: 'half_lod',
+        standard,
+        lodStrategy,
       });
       await db.createAnalysis(analysis);
       created.push({ sample, analysis });
