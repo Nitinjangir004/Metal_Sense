@@ -87,6 +87,8 @@ export interface Sample {
   updatedAt: string;
 }
 
+export type CreateSampleInput = Omit<Sample, 'id' | 'createdAt' | 'updatedAt'>;
+
 // Standards & Permissible Limits Registry
 export interface StandardAnalyteLimit {
   symbol: MetalSymbol;

@@ -30,6 +30,68 @@ importsRouter.get('/template.csv', (req: Request, res: Response) => {
 importsRouter.use(authenticate);
 
 /**
+ * POST /api/v1/imports/:workspaceId/csv/preview
+ * Validates and previews CSV structure, rows, and mapped columns before persistent commit.
+ */
+importsRouter.post(
+  '/:workspaceId/csv/preview',
+  requireWorkspaceRole('editor'),
+  uploadMiddleware.single('file'),
+  async (req: Request, res: Response) => {
+    let csvText = '';
+    let fileName = 'preview.csv';
+
+    if (req.file) {
+      if (!verifyFileMagicBytes(req.file.path, req.file.mimetype)) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch {}
+        return res
+          .status(400)
+          .json({ error: 'Uploaded file signature does not match CSV/text format.' });
+      }
+      csvText = fs.readFileSync(req.file.path, 'utf8');
+      fileName = req.file.originalname;
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch {}
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch {}
+    } else if (req.body?.csvText) {
+      csvText = req.body.csvText;
+      fileName = req.body.fileName || 'direct_paste.csv';
+    } else {
+      return res.status(400).json({
+        error: 'No CSV file or csvText payload provided.',
+      });
+    }
+
+    const projects = await db.findProjectsByWorkspace(req.params.workspaceId);
+    const projectId = projects[0]?.id || 'proj-default';
+
+    const parseResult = parseSamplesCsv(
+      csvText,
+      req.params.workspaceId,
+      projectId,
+      fileName
+    );
+
+    res.json({
+      data: {
+        fileName,
+        totalRows: parseResult.totalRows,
+        validCount: parseResult.validCount,
+        errorCount: parseResult.errorCount,
+        samples: parseResult.samples,
+        errors: parseResult.errors,
+        rawCsvText: csvText,
+      },
+    });
+  }
+);
+
+/**
  * POST /api/v1/imports/:workspaceId/csv
  * Batch CSV matrix ingestion with row-level validation.
  */
@@ -52,6 +114,9 @@ importsRouter.post(
       }
       csvText = fs.readFileSync(req.file.path, 'utf8');
       fileName = req.file.originalname;
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch {}
     } else if (req.body?.csvText) {
       csvText = req.body.csvText;
       fileName = req.body.fileName || 'direct_paste.csv';

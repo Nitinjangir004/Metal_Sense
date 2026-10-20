@@ -1,44 +1,45 @@
 import { describe, it, expect } from 'vitest';
-import { DEMO_SAMPLES, DEMO_ANALYSES } from './data/demoSamples';
+import { ApiError } from './lib/api';
+import { BIS_10500_2012, WHO_GDWQ_4TH_ED, CANONICAL_METALS } from '@metalsense/shared';
 
-describe('Client Benchmark & Route Integrity', () => {
-  it('loads demo samples with verified structures', () => {
-    expect(DEMO_SAMPLES.length).toBeGreaterThanOrEqual(3);
-    for (const sample of DEMO_SAMPLES) {
-      expect(sample.sampleCode).toBeDefined();
-      expect(sample.location.name).toBeDefined();
-      expect(sample.measurements.length).toBeGreaterThan(0);
-      expect(sample.provenance.isDemo).toBe(true);
-    }
+describe('Client Configuration & Standards Verification', () => {
+  it('correctly instantiates typed ApiError with status and message', () => {
+    const error = new ApiError('Workspace not found', 404, { detail: 'missing' });
+    expect(error.name).toBe('ApiError');
+    expect(error.message).toBe('Workspace not found');
+    expect(error.status).toBe(404);
+    expect(error.data).toEqual({ detail: 'missing' });
   });
 
-  it('matches demo sample IDs to pre-calculated analyses', () => {
-    for (const sample of DEMO_SAMPLES) {
-      const analysis = DEMO_ANALYSES[sample.id];
-      expect(analysis).toBeDefined();
-      expect(analysis.hpi.value).toBeGreaterThan(0);
-      expect(analysis.standardUsed.code).toBe('BIS_10500_2012');
-    }
+  it('validates canonical heavy metal specifications in client bundle', () => {
+    const symbols = Object.keys(CANONICAL_METALS);
+    expect(symbols).toContain('As');
+    expect(symbols).toContain('Pb');
+    expect(symbols).toContain('Cd');
+    expect(symbols).toContain('Cr');
+    expect(symbols).toContain('Cu');
+    expect(symbols).toContain('Fe');
+    expect(symbols).toContain('Mn');
+    expect(symbols).toContain('Ni');
+    expect(symbols).toContain('Zn');
+
+    expect(CANONICAL_METALS.As.name).toBe('Arsenic');
+    expect(CANONICAL_METALS.Pb.atomicMass).toBe(207.2);
+    expect(CANONICAL_METALS.Pb.atomicNumber).toBe(82);
   });
 
-  it('verifies that industrial well GW-IND-2026-01 exceeds critical threshold', () => {
-    const analysis = DEMO_ANALYSES['demo-sample-001'];
-    expect(analysis.hpi.value).toBeGreaterThanOrEqual(100);
-    expect(analysis.overallPollutionCategory).toBe('High Pollution');
-    expect(analysis.exceededAnalytes.length).toBeGreaterThanOrEqual(2);
+  it('verifies BIS IS 10500:2012 drinking water standards limits', () => {
+    expect(BIS_10500_2012.code).toBe('BIS_10500_2012');
+    expect(BIS_10500_2012.jurisdiction).toBe('India');
+    expect(BIS_10500_2012.limits.As.permissibleLimit).toBe(0.05);
+    expect(BIS_10500_2012.limits.Pb.permissibleLimit).toBe(0.01);
+    expect(BIS_10500_2012.limits.Cd.permissibleLimit).toBe(0.003);
   });
 
-  it('validates agricultural well GW-AGR-2026-04 is classified as medium pollution', () => {
-    const analysis = DEMO_ANALYSES['demo-sample-002'];
-    expect(analysis.hpi.value).toBe(38.6);
-    expect(analysis.hpi.classification).toBe('medium');
-    expect(analysis.exceededAnalytes.length).toBe(0);
-  });
-
-  it('validates deep municipal borewell GW-RES-2026-03 is classified as low pollution', () => {
-    const analysis = DEMO_ANALYSES['demo-sample-003'];
-    expect(analysis.hpi.value).toBe(14.2);
-    expect(analysis.hpi.value).toBeLessThan(25);
-    expect(analysis.hpi.classification).toBe('low');
+  it('verifies WHO Guidelines for Drinking-water Quality 4th Ed limits', () => {
+    expect(WHO_GDWQ_4TH_ED.code).toBe('WHO_GDWQ_4TH');
+    expect(WHO_GDWQ_4TH_ED.jurisdiction).toBe('International_WHO');
+    expect(WHO_GDWQ_4TH_ED.limits.As.permissibleLimit).toBe(0.01);
+    expect(WHO_GDWQ_4TH_ED.limits.Pb.permissibleLimit).toBe(0.01);
   });
 });

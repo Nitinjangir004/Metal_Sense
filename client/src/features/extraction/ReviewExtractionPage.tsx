@@ -12,13 +12,21 @@ import {
   HelpCircle,
   Plus,
   Trash2,
+  Upload,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Alert } from '../../components/ui/Alert';
 import { useAuth } from '../auth/AuthContext';
-import { CANONICAL_METALS, MetalSymbol, ConcentrationUnit, MeasurementQualifier } from '@metalsense/shared';
+import { useExtractionJob, useConfirmExtraction, useUploadDocument } from '../../lib/api';
+import {
+  CANONICAL_METALS,
+  MetalSymbol,
+  ConcentrationUnit,
+  MeasurementQualifier,
+} from '@metalsense/shared';
 
 interface CandidateRow {
   symbol: MetalSymbol;
@@ -35,119 +43,67 @@ export function ReviewExtractionPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { activeWorkspace } = useAuth();
-  const workspaceId = activeWorkspace?.id || 'demo-workspace';
+  const workspaceId = activeWorkspace?.id;
   const jobId = searchParams.get('jobId');
 
-  const [documentName, setDocumentName] = useState('EnviroTech_Certificate_892.pdf');
-  const [labName, setLabName] = useState('EnviroTech Analytical Labs (NABL)');
-  const [sampleCode, setSampleCode] = useState('GW-IND-2026-01');
-  const [locationName, setLocationName] = useState('Well #4 — Industrial Periphery');
-  const [district, setDistrict] = useState('Patparganj Industrial Area');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const { data: jobData, isLoading: jobLoading, isError: jobError } = useExtractionJob(
+    workspaceId,
+    jobId || undefined
+  );
+  const confirmMutation = useConfirmExtraction(workspaceId);
+  const uploadDocMutation = useUploadDocument(workspaceId);
 
-  const [candidates, setCandidates] = useState<CandidateRow[]>([
-    {
-      symbol: 'As',
-      name: 'Arsenic',
-      value: '0.042',
-      unit: 'mg/L',
-      qualifier: '=',
-      page: 1,
-      confidence: 0.96,
-      confirmed: true,
-    },
-    {
-      symbol: 'Pb',
-      name: 'Lead',
-      value: '0.028',
-      unit: 'mg/L',
-      qualifier: '=',
-      page: 1,
-      confidence: 0.94,
-      confirmed: true,
-    },
-    {
-      symbol: 'Cd',
-      name: 'Cadmium',
-      value: '0.0045',
-      unit: 'mg/L',
-      qualifier: '=',
-      page: 1,
-      confidence: 0.88,
-      confirmed: true,
-    },
-    {
-      symbol: 'Cr',
-      name: 'Chromium',
-      value: '0.065',
-      unit: 'mg/L',
-      qualifier: '=',
-      page: 1,
-      confidence: 0.91,
-      confirmed: true,
-    },
-    {
-      symbol: 'Fe',
-      name: 'Iron',
-      value: '1.45',
-      unit: 'mg/L',
-      qualifier: '=',
-      page: 2,
-      confidence: 0.98,
-      confirmed: true,
-    },
-    {
-      symbol: 'Ni',
-      name: 'Nickel',
-      value: '0.035',
-      unit: 'mg/L',
-      qualifier: '=',
-      page: 2,
-      confidence: 0.82,
-      confirmed: false,
-    },
-  ]);
+  const [documentName, setDocumentName] = useState('');
+  const [labName, setLabName] = useState('');
+  const [sampleCode, setSampleCode] = useState('');
+  const [locationName, setLocationName] = useState('');
+  const [district, setDistrict] = useState('');
+  const [collectionDate, setCollectionDate] = useState(
+    new Date().toISOString().substring(0, 16)
+  );
+  const [sampleMatrix, setSampleMatrix] = useState<
+    'groundwater' | 'drinking_water' | 'surface_water'
+  >('groundwater');
 
-  // If a live jobId is provided, poll or fetch its candidate data
+  const [candidates, setCandidates] = useState<CandidateRow[]>([]);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
+    null
+  );
+
+  // Sync data when job arrives
   useEffect(() => {
-    if (!jobId) return;
-
-    async function fetchJob() {
-      try {
-        const res = await fetch(`/api/v1/imports/${workspaceId}/${jobId}`);
-        if (!res.ok) return;
-        const json = await res.json();
-        const job = json.data;
-        if (job.proposedData) {
-          setDocumentName(job.originalFileName);
-          if (job.proposedData.sampleCode) setSampleCode(job.proposedData.sampleCode);
-          if (job.proposedData.laboratoryName) setLabName(job.proposedData.laboratoryName);
-          if (job.proposedData.locationName) setLocationName(job.proposedData.locationName);
-          if (job.proposedData.district) setDistrict(job.proposedData.district);
-
-          if (job.proposedData.analytes) {
-            setCandidates(
-              job.proposedData.analytes.map((a: any) => ({
-                symbol: a.symbol,
-                name: a.name || CANONICAL_METALS[a.symbol as MetalSymbol]?.name || a.symbol,
-                value: String(a.value),
-                unit: a.unit || 'mg/L',
-                qualifier: a.qualifier || '=',
-                page: a.sourcePage || 1,
-                confidence: a.confidence || 0.9,
-                confirmed: true,
-              }))
-            );
-          }
+    if (jobData) {
+      setDocumentName(jobData.originalFileName || 'Uploaded_Report.pdf');
+      const prop = jobData.proposedData;
+      if (prop) {
+        if (prop.sampleCode) setSampleCode(prop.sampleCode);
+        if (prop.laboratoryName) setLabName(prop.laboratoryName);
+        if (prop.locationName) setLocationName(prop.locationName);
+        if (prop.district) setDistrict(prop.district);
+        if (prop.sampleMatrix) setSampleMatrix(prop.sampleMatrix);
+        if (prop.collectionDate) {
+          try {
+            setCollectionDate(new Date(prop.collectionDate).toISOString().substring(0, 16));
+          } catch {}
         }
-      } catch (err) {
-        // Fallback to initial display
+
+        if (Array.isArray(prop.analytes)) {
+          setCandidates(
+            prop.analytes.map((a: any) => ({
+              symbol: a.symbol,
+              name: a.name || CANONICAL_METALS[a.symbol as MetalSymbol]?.name || a.symbol,
+              value: String(a.value),
+              unit: a.unit || 'mg/L',
+              qualifier: a.qualifier || '=',
+              page: a.sourcePage || 1,
+              confidence: a.confidence || 0.9,
+              confirmed: true,
+            }))
+          );
+        }
       }
     }
-
-    fetchJob();
-  }, [jobId, workspaceId]);
+  }, [jobData]);
 
   const handleToggleConfirm = (index: number) => {
     const updated = [...candidates];
@@ -161,324 +117,332 @@ export function ReviewExtractionPage() {
     setCandidates(updated);
   };
 
-  const handleQualifierChange = (index: number, val: MeasurementQualifier) => {
+  const handleQualifierChange = (index: number, q: MeasurementQualifier) => {
     const updated = [...candidates];
-    updated[index].qualifier = val;
+    updated[index].qualifier = q;
     setCandidates(updated);
   };
 
-  const handleUnitChange = (index: number, val: ConcentrationUnit) => {
-    const updated = [...candidates];
-    updated[index].unit = val;
-    setCandidates(updated);
+  const handleAddAnalyte = () => {
+    setCandidates([
+      ...candidates,
+      {
+        symbol: 'Fe',
+        name: 'Iron',
+        value: '0.10',
+        unit: 'mg/L',
+        qualifier: '=',
+        page: 1,
+        confidence: 1.0,
+        confirmed: true,
+      },
+    ]);
   };
 
-  const handleConfirmAll = () => {
-    setCandidates(candidates.map((c) => ({ ...c, confirmed: true })));
+  const handleRemoveAnalyte = (index: number) => {
+    setCandidates(candidates.filter((_, i) => i !== index));
   };
 
-  const handleSaveVerifiedData = async () => {
-    setIsSubmitting(true);
+  const handleConfirmExtraction = async () => {
+    if (!jobId || !workspaceId) return;
     setFeedback(null);
 
-    const measurements = candidates.map((c) => ({
-      symbol: c.symbol,
-      name: c.name,
-      value: parseFloat(c.value) || 0,
-      unit: c.unit,
-      qualifier: c.qualifier,
-      detectionLimit: c.qualifier === '<' ? parseFloat(c.value) : undefined,
-      sourcePage: c.page,
-      confidence: c.confidence,
-    }));
+    const activeAnalytes = candidates.filter((c) => c.confirmed);
+    if (activeAnalytes.length === 0) {
+      setFeedback({ type: 'error', message: 'Please confirm at least one analyte measurement.' });
+      return;
+    }
 
     try {
-      if (jobId) {
-        // Call backend confirmation endpoint
-        const res = await fetch(`/api/v1/imports/${workspaceId}/${jobId}/confirm`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sampleCode,
-            sampleMatrix: 'groundwater',
-            collectionDate: new Date().toISOString(),
-            locationName,
-            district,
-            measurements,
-          }),
-        });
+      const result = await confirmMutation.mutateAsync({
+        jobId,
+        data: {
+          sampleCode: sampleCode || `EXT-${Date.now().toString().slice(-4)}`,
+          sampleMatrix,
+          collectionDate: new Date(collectionDate).toISOString(),
+          locationName: locationName || 'Verified Monitoring Station',
+          district: district || undefined,
+          notes: `Verified OCR extraction from file: ${documentName}`,
+          measurements: activeAnalytes.map((c) => ({
+            symbol: c.symbol,
+            name: c.name,
+            value: parseFloat(c.value),
+            unit: c.unit,
+            qualifier: c.qualifier,
+            detectionLimit: c.qualifier === '<' ? parseFloat(c.value) : undefined,
+          })),
+        },
+      });
 
-        if (!res.ok) {
-          const errJson = await res.json();
-          throw new Error(errJson.error || 'Failed to save confirmed sample.');
-        }
-
-        const json = await res.json();
-        navigate(`/app/samples/${json.data.sample.id}`);
-      } else {
-        // Demo mode fallback: save directly to samples
-        const res = await fetch(`/api/v1/workspaces/${workspaceId}/samples`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sampleCode,
-            sampleMatrix: 'groundwater',
-            collectionDate: new Date().toISOString(),
-            location: {
-              id: `loc-${Date.now()}`,
-              name: locationName,
-              code: `LOC-${sampleCode}`,
-              district,
-              country: 'India',
-            },
-            laboratory: { name: labName },
-            measurements,
-            provenance: {
-              method: 'ocr_document',
-              originalFileName: documentName,
-              verifiedAt: new Date().toISOString(),
-              isDemo: false,
-            },
-          }),
-        });
-
-        if (res.ok) {
-          const json = await res.json();
-          navigate(`/app/samples/${json.data.sample.id}`);
-        } else {
-          // If demo offline, navigate to sample list
-          navigate('/app/samples');
-        }
-      }
+      navigate(`/app/samples/${result.sample.id}`);
     } catch (err: any) {
-      setFeedback(err.message || 'Error confirming extracted values.');
-    } finally {
-      setIsSubmitting(false);
+      setFeedback({
+        type: 'error',
+        message: err.message || 'Failed to confirm extraction and create sample.',
+      });
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+  const handleDirectFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0] && workspaceId) {
+      const file = e.target.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        const res = await uploadDocMutation.mutateAsync(formData);
+        navigate(`/app/import/review?jobId=${res.jobId}`);
+      } catch (err: any) {
+        setFeedback({ type: 'error', message: err.message || 'File upload failed.' });
+      }
+    }
+  };
+
+  if (!jobId) {
+    return (
+      <div className="max-w-3xl mx-auto p-12 text-center bg-slate-900/70 rounded-3xl border border-slate-800 space-y-6">
+        <FileText className="w-16 h-16 text-slate-600 mx-auto" />
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-white">
-              Document Extraction Verification
-            </h1>
-            <Badge variant="cyan">HUMAN REVIEW REQUIRED</Badge>
-          </div>
-          <p className="text-sm text-slate-400 mt-1">
-            Source: <span className="font-mono text-slate-300">{documentName}</span> (OCR Extraction Proposal)
+          <h2 className="text-xl font-bold text-white">No Document Extraction Job Selected</h2>
+          <p className="text-xs text-slate-400 mt-2 max-w-md mx-auto">
+            Upload an environmental laboratory report certificate (PDF or image) to initiate OCR extraction with human-in-the-loop review.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleConfirmAll}
-            leftIcon={<CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />}
-          >
-            Mark All as Confirmed
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleSaveVerifiedData}
-            isLoading={isSubmitting}
-            rightIcon={<ArrowRight className="w-4 h-4" />}
-          >
-            Save &amp; Compute Verified Dossier
-          </Button>
+        <div className="pt-2">
+          <label className="cursor-pointer">
+            <Button
+              variant="primary"
+              size="md"
+              disabled={uploadDocMutation.isPending}
+              leftIcon={
+                uploadDocMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                ) : (
+                  <Upload className="w-4 h-4" />
+                )
+              }
+            >
+              {uploadDocMutation.isPending ? 'Uploading & Extracting...' : 'Upload Lab Certificate (PDF / Image)'}
+            </Button>
+            <input
+              type="file"
+              accept=".pdf,image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={handleDirectFileUpload}
+            />
+          </label>
         </div>
       </div>
+    );
+  }
 
-      {feedback && <Alert variant="danger">{feedback}</Alert>}
+  if (jobLoading) {
+    return (
+      <div className="max-w-4xl mx-auto p-16 text-center text-slate-400 space-y-4">
+        <Loader2 className="w-10 h-10 animate-spin text-teal-400 mx-auto" />
+        <h3 className="text-base font-bold text-white">Extracting Candidate Measurements...</h3>
+        <p className="text-xs text-slate-400">
+          Running OCR parser and analyzing document bounding boxes.
+        </p>
+      </div>
+    );
+  }
 
-      <Alert variant="warning" title="Mandatory Scientific Integrity Rule">
-        AI/OCR models produce candidate measurements, not verified scientific evidence. You must review
-        every concentration, detection qualifier, and unit against the certificate before saving.
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+            <span>Review &amp; Verify Document Extraction</span>
+            <Badge variant="outline" className="text-xs text-amber-400 border-amber-500/30">
+              UNVERIFIED CANDIDATE STATE
+            </Badge>
+          </h1>
+          <p className="text-sm text-slate-400 mt-1">
+            Mandatory human verification: confirm or adjust proposed values extracted from{' '}
+            <strong className="text-slate-200">{documentName}</strong>.
+          </p>
+        </div>
+
+        <Button
+          variant="primary"
+          onClick={handleConfirmExtraction}
+          disabled={confirmMutation.isPending}
+          leftIcon={
+            confirmMutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin text-white" />
+            ) : (
+              <CheckCircle2 className="w-4 h-4" />
+            )
+          }
+        >
+          {confirmMutation.isPending ? 'Creating Sample...' : 'Approve & Ingest Sample'}
+        </Button>
+      </div>
+
+      {feedback && (
+        <Alert variant={feedback.type === 'success' ? 'success' : 'danger'}>
+          {feedback.message}
+        </Alert>
+      )}
+
+      {/* Scientific Integrity Notice */}
+      <Alert variant="warning" title="Scientific Integrity Rule">
+        AI and OCR engines never declare water safe or compute pollution indices directly. Review
+        each candidate analyte below before confirming. Unchecked rows will be excluded.
       </Alert>
 
-      {/* Two Column Layout: Document Info + Candidate Table */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left: Document Metadata & Preview Card */}
-        <div className="lg:col-span-4 space-y-4">
-          <Card className="border-slate-800 bg-slate-900/60">
-            <CardHeader className="pb-3 border-b border-slate-800">
-              <CardTitle className="text-sm font-semibold text-white flex items-center gap-2">
-                <FileText className="w-4 h-4 text-teal-400" />
-                <span>Source Document Metadata</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-3 space-y-3 text-xs">
-              <div>
-                <span className="text-slate-400">File Name:</span>
-                <div className="font-mono text-slate-200 mt-0.5">{documentName}</div>
-              </div>
-              <div>
-                <span className="text-slate-400">Detected Lab:</span>
-                <div className="text-slate-200 mt-0.5">{labName}</div>
-              </div>
-              <div>
-                <span className="text-slate-400">Sample Identifier:</span>
-                <input
-                  type="text"
-                  value={sampleCode}
-                  onChange={(e) => setSampleCode(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 mt-0.5 font-mono text-xs text-white"
-                />
-              </div>
-              <div>
-                <span className="text-slate-400">Location Name:</span>
-                <input
-                  type="text"
-                  value={locationName}
-                  onChange={(e) => setLocationName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 mt-0.5 text-xs text-white"
-                />
-              </div>
-              <div>
-                <span className="text-slate-400">District:</span>
-                <input
-                  type="text"
-                  value={district}
-                  onChange={(e) => setDistrict(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1 mt-0.5 text-xs text-white"
-                />
-              </div>
-            </CardContent>
-          </Card>
+      {/* Metadata Form */}
+      <Card className="border-slate-800 bg-slate-900/80">
+        <CardHeader>
+          <CardTitle className="text-base font-bold text-white">Extracted Metadata</CardTitle>
+          <CardDescription>Verify laboratory, sample code, and location identifiers</CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+          <div>
+            <label className="block text-slate-300 font-medium mb-1">Sample Code</label>
+            <input
+              type="text"
+              value={sampleCode}
+              onChange={(e) => setSampleCode(e.target.value)}
+              className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white font-mono"
+            />
+          </div>
 
-          <Card className="border-slate-800 bg-slate-900/60 p-4 text-center">
-            <div className="border border-slate-800 bg-slate-950 rounded-lg p-6 text-xs text-slate-400">
-              <Eye className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-              <span>Multi-Page Lab Report Preview</span>
-              <p className="text-[11px] text-slate-500 mt-1">
-                2 Pages Ingested • Click any row to view page reference
-              </p>
-            </div>
-          </Card>
+          <div>
+            <label className="block text-slate-300 font-medium mb-1">Testing Laboratory</label>
+            <input
+              type="text"
+              value={labName}
+              onChange={(e) => setLabName(e.target.value)}
+              className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-slate-300 font-medium mb-1">Sampling Location</label>
+            <input
+              type="text"
+              value={locationName}
+              onChange={(e) => setLocationName(e.target.value)}
+              className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-slate-300 font-medium mb-1">District / State</label>
+            <input
+              type="text"
+              value={district}
+              onChange={(e) => setDistrict(e.target.value)}
+              className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Candidate Analytes Verification Table */}
+      <Card className="border-slate-800 bg-slate-900/80 p-0 overflow-hidden">
+        <CardHeader className="p-4 border-b border-slate-800 bg-slate-950/40 flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-base font-bold text-white">
+              Candidate Analyte Measurements ({candidates.length})
+            </CardTitle>
+            <CardDescription>
+              Toggle the checkbox to accept or reject each extracted metal concentration
+            </CardDescription>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleAddAnalyte}
+            leftIcon={<Plus className="w-3.5 h-3.5" />}
+          >
+            Add Analyte
+          </Button>
+        </CardHeader>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-950/70 text-slate-400 border-b border-slate-800 uppercase tracking-wider text-[11px]">
+              <tr>
+                <th className="py-3 px-4 font-semibold">Accept</th>
+                <th className="py-3 px-4 font-semibold">Analyte</th>
+                <th className="py-3 px-4 font-semibold">Qualifier</th>
+                <th className="py-3 px-4 font-semibold">Value</th>
+                <th className="py-3 px-4 font-semibold">Unit</th>
+                <th className="py-3 px-4 font-semibold">Confidence</th>
+                <th className="py-3 px-4 font-semibold text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/80">
+              {candidates.map((c, idx) => (
+                <tr
+                  key={idx}
+                  className={`transition-colors ${
+                    c.confirmed ? 'bg-slate-950/30' : 'bg-slate-950/80 opacity-50'
+                  }`}
+                >
+                  <td className="py-3 px-4">
+                    <input
+                      type="checkbox"
+                      checked={c.confirmed}
+                      onChange={() => handleToggleConfirm(idx)}
+                      className="w-4 h-4 rounded border-slate-700 text-teal-600 focus:ring-teal-500 cursor-pointer"
+                    />
+                  </td>
+                  <td className="py-3 px-4 font-mono font-medium text-white">
+                    <span className="font-bold text-teal-300 mr-2">{c.symbol}</span>
+                    <span className="text-slate-300 text-xs">{c.name}</span>
+                  </td>
+                  <td className="py-3 px-4">
+                    <select
+                      value={c.qualifier}
+                      onChange={(e) =>
+                        handleQualifierChange(idx, e.target.value as MeasurementQualifier)
+                      }
+                      className="rounded bg-slate-900 border border-slate-700 px-2 py-1 text-xs text-white"
+                    >
+                      <option value="=">=</option>
+                      <option value="<">&lt; (LOD)</option>
+                      <option value="<=">&le;</option>
+                      <option value=">">&gt;</option>
+                    </select>
+                  </td>
+                  <td className="py-3 px-4">
+                    <input
+                      type="number"
+                      step="any"
+                      value={c.value}
+                      onChange={(e) => handleValueChange(idx, e.target.value)}
+                      className="w-24 rounded bg-slate-900 border border-slate-700 px-2 py-1 text-xs text-white font-mono"
+                    />
+                  </td>
+                  <td className="py-3 px-4 font-mono text-slate-400">{c.unit}</td>
+                  <td className="py-3 px-4">
+                    <Badge
+                      variant={c.confidence >= 0.9 ? 'safe' : 'moderate'}
+                      size="sm"
+                    >
+                      {Math.round(c.confidence * 100)}% (p.{c.page})
+                    </Badge>
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAnalyte(idx)}
+                      className="p-1 text-slate-500 hover:text-rose-400"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-
-        {/* Right: Candidate Values Review Table */}
-        <div className="lg:col-span-8">
-          <Card className="border-slate-800 bg-slate-900/90 overflow-hidden">
-            <CardHeader className="border-b border-slate-800 pb-3 flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-base font-bold text-white">
-                  Proposed Analyte Concentrations
-                </CardTitle>
-                <CardDescription>
-                  Verify detected numerical values, detection limits, and units. Edit directly if needed.
-                </CardDescription>
-              </div>
-              <Badge variant="safe">
-                {candidates.filter((c) => c.confirmed).length} / {candidates.length} Confirmed
-              </Badge>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs sm:text-sm">
-                  <thead className="bg-slate-950/70 text-slate-400 border-b border-slate-800 uppercase tracking-wider text-[11px]">
-                    <tr>
-                      <th className="py-3 px-4 font-semibold">Analyte</th>
-                      <th className="py-3 px-4 font-semibold">Qualifier</th>
-                      <th className="py-3 px-4 font-semibold">Value</th>
-                      <th className="py-3 px-4 font-semibold">Unit</th>
-                      <th className="py-3 px-4 font-semibold">Confidence</th>
-                      <th className="py-3 px-4 font-semibold">Page</th>
-                      <th className="py-3 px-4 font-semibold text-center">Confirm</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/80">
-                    {candidates.map((cand, idx) => (
-                      <tr
-                        key={cand.symbol}
-                        className={`hover:bg-slate-800/40 transition-colors ${
-                          !cand.confirmed ? 'bg-amber-950/20' : ''
-                        }`}
-                      >
-                        <td className="py-2.5 px-4">
-                          <span className="font-mono font-bold text-white">{cand.symbol}</span>
-                          <span className="text-slate-400 text-xs ml-2">({cand.name})</span>
-                        </td>
-
-                        <td className="py-2.5 px-4 font-mono text-slate-300">
-                          <select
-                            value={cand.qualifier}
-                            onChange={(e) =>
-                              handleQualifierChange(idx, e.target.value as MeasurementQualifier)
-                            }
-                            className="bg-slate-950 border border-slate-700 rounded px-1.5 py-1 text-xs text-white"
-                          >
-                            <option value="=">=</option>
-                            <option value="<">&lt; (LOD)</option>
-                            <option value="<=">&le;</option>
-                          </select>
-                        </td>
-
-                        <td className="py-2.5 px-4">
-                          <input
-                            type="text"
-                            value={cand.value}
-                            onChange={(e) => handleValueChange(idx, e.target.value)}
-                            className="w-24 rounded bg-slate-950 border border-slate-700 px-2 py-1 text-xs text-white font-mono focus:outline-none focus:border-teal-500"
-                          />
-                        </td>
-
-                        <td className="py-2.5 px-4 font-mono text-slate-300">
-                          <select
-                            value={cand.unit}
-                            onChange={(e) =>
-                              handleUnitChange(idx, e.target.value as ConcentrationUnit)
-                            }
-                            className="bg-slate-950 border border-slate-700 rounded px-1.5 py-1 text-xs text-white"
-                          >
-                            <option value="mg/L">mg/L</option>
-                            <option value="ug/L">&mu;g/L</option>
-                            <option value="ppm">ppm</option>
-                            <option value="ppb">ppb</option>
-                          </select>
-                        </td>
-
-                        <td className="py-2.5 px-4 font-mono">
-                          <span
-                            className={
-                              cand.confidence > 0.9
-                                ? 'text-emerald-400'
-                                : 'text-amber-400'
-                            }
-                          >
-                            {(cand.confidence * 100).toFixed(0)}%
-                          </span>
-                        </td>
-
-                        <td className="py-2.5 px-4 text-slate-400">Page {cand.page}</td>
-
-                        <td className="py-2.5 px-4 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleToggleConfirm(idx)}
-                            className={`p-1.5 rounded-md transition-colors ${
-                              cand.confirmed
-                                ? 'bg-teal-950 border border-teal-600 text-teal-300'
-                                : 'bg-slate-800 text-slate-500 hover:text-white'
-                            }`}
-                            title={cand.confirmed ? 'Confirmed' : 'Click to confirm'}
-                          >
-                            <CheckCircle2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      </Card>
     </div>
   );
 }

@@ -28,13 +28,25 @@ export function calculateSampleIndices(
   const hei = calculateHei(sample.measurements, standard, lodStrategy);
   const cd = calculateCd(sample.measurements, standard, lodStrategy);
 
-  // Exceeded analytes
+  // Exceeded analytes: resolved with LOD substitution
   const exceededAnalytes: AnalysisRun['exceededAnalytes'] = [];
   for (const m of sample.measurements) {
     const limit = standard.limits[m.symbol];
     if (!limit) continue;
 
-    const monitored = convertConcentration(m.value, m.unit, limit.unit);
+    let effectiveVal = m.value;
+    if (m.qualifier === '<' || m.qualifier === '<=') {
+      const lod = m.detectionLimit ?? m.value;
+      if (lodStrategy === 'zero') {
+        effectiveVal = 0;
+      } else if (lodStrategy === 'half_lod') {
+        effectiveVal = lod / 2;
+      } else {
+        effectiveVal = lod;
+      }
+    }
+
+    const monitored = convertConcentration(effectiveVal, m.unit, limit.unit);
     if (monitored > limit.permissibleLimit) {
       exceededAnalytes.push({
         symbol: m.symbol,
@@ -58,7 +70,7 @@ export function calculateSampleIndices(
     sampleId: sample.id,
     workspaceId: sample.workspaceId,
     timestamp: new Date().toISOString(),
-    calculationVersion: '1.0.0-deterministic',
+    calculationVersion: '1.1.0-deterministic',
     standardUsed: {
       code: standard.code,
       version: standard.version,
@@ -74,7 +86,7 @@ export function calculateSampleIndices(
     auditTrail: {
       formulaVersion: 'HPI_Mohan_1996_HEI_Edet_2002_Cd_Backman_1998',
       calculatedAt: new Date().toISOString(),
-      engineVersion: 'metalsense-calc-engine-v1.0.0',
+      engineVersion: 'metalsense-calc-engine-v1.1.0',
     },
   };
 }

@@ -99,6 +99,20 @@ describe('Authoritative Worked Examples & Mathematical Invariants', () => {
     expect(whoHei.traces[0].ratio).toBe(0.5);
   });
 
+  it('MATHEMATICAL BOUNDARY INVARIANT: When all metals are at exact permissible limits (Si), Backman Cd must equal 0.00', () => {
+    // In Backman et al. (1998): Cfi = (CAi / CNi) - 1. When CAi = CNi = Si, Cfi = 1 - 1 = 0.
+    const boundaryMeasurements: AnalyteMeasurement[] = [
+      { symbol: 'As', name: 'Arsenic', value: 0.05, unit: 'mg/L', qualifier: '=' },
+      { symbol: 'Pb', name: 'Lead', value: 0.01, unit: 'mg/L', qualifier: '=' },
+      { symbol: 'Cd', name: 'Cadmium', value: 0.003, unit: 'mg/L', qualifier: '=' },
+      { symbol: 'Cr', name: 'Chromium', value: 0.05, unit: 'mg/L', qualifier: '=' },
+    ];
+
+    const cd = calculateCd(boundaryMeasurements, BIS_10500_2012, 'half_lod');
+    expect(cd.value).toBe(0);
+    expect(cd.classification).toBe('low');
+  });
+
   it('ERROR EXPLANATION: Throws informative error when no matching standard limits exist', () => {
     const unsupportedSample: AnalyteMeasurement[] = [
       // @ts-expect-error testing invalid element

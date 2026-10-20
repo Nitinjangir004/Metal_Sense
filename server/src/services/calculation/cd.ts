@@ -45,7 +45,8 @@ export function calculateCd(
     }
 
     const monitoredConc = convertConcentration(effectiveVal, m.unit, stdLimit.unit);
-    const baselineLimit = stdLimit.acceptableLimit;
+    // Backman et al. (1998) baseline CNi represents upper permissible concentration (Si)
+    const baselineLimit = stdLimit.permissibleLimit || stdLimit.acceptableLimit;
     const contaminationFactor = monitoredConc / baselineLimit - 1;
 
     sumCd += contaminationFactor;
