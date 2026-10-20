@@ -2,15 +2,9 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   FlaskConical,
-  Scale,
-  ShieldCheck,
   Calculator,
-  MapPin,
   FileSpreadsheet,
   ArrowRight,
-  CheckCircle2,
-  AlertTriangle,
-  FileText,
   FileCheck2,
   ChevronDown,
   Sparkles,
@@ -69,12 +63,12 @@ export function LandingPage() {
 
   const faqs = [
     {
-      q: 'Does MetalSense use AI to calculate pollution scores?',
+      q: 'Does Metal Sense use AI to calculate pollution scores?',
       a: 'No. AI is never permitted to perform numerical arithmetic or compute index scores. Pollution indices (HPI, HEI, Cd) are evaluated entirely by deterministic, unit-tested mathematical algorithms. AI is strictly utilized for document layout extraction proposals and natural-language summaries of verified results.',
     },
     {
       q: 'Which water quality standards are currently supported?',
-      a: 'MetalSense ships with the Bureau of Indian Standards (BIS IS 10500:2012 Drinking Water Specification, including 2015 amendments) and the World Health Organization (WHO Guidelines for Drinking-water Quality, 4th Edition). Every standard value is directly cited from official regulatory texts.',
+      a: 'Metal Sense ships with the Bureau of Indian Standards (BIS IS 10500:2012 Drinking Water Specification, including 2015 amendments) and the World Health Organization (WHO Guidelines for Drinking-water Quality, 4th Edition). Every standard value is directly cited from official regulatory texts.',
     },
     {
       q: 'How are measurements below detection limit (<LOD) handled?',
@@ -82,34 +76,39 @@ export function LandingPage() {
     },
     {
       q: 'Can laboratory reports with scanned tables be uploaded?',
-      a: 'Yes. MetalSense includes a document ingestion pipeline that extracts candidate analyte concentrations from PDFs and images. However, to guarantee scientific rigor, no extracted data is saved until confirmed by a human analyst.',
+      a: 'Yes. Metal Sense includes a document ingestion pipeline that extracts candidate analyte concentrations from PDFs and images. However, to guarantee scientific rigor, no extracted data is saved until confirmed by a human analyst.',
     },
   ];
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#E9F4EA] text-[#0F1F17]">
+    <div className="flex min-h-screen flex-col bg-page text-title font-sans">
       {/* Top Banner */}
-      <div className="border-b border-[#BED4BC]/60 bg-[#ECF5EB] px-4 py-2 text-center text-xs text-[#002F18] font-semibold">
+      <div className="border-b border-inset bg-card px-4 py-2 text-center text-xs text-forest-900 font-semibold">
         <span>Scientific Integrity Notice: Calculations are deterministic pure functions referencing BIS 10500:2012 &amp; WHO standards. AI never executes arithmetic.</span>
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-40 w-full border-b border-[#DFEADD] bg-[#E9F4EA]/90 backdrop-blur-md">
+      <header className="sticky top-0 z-40 w-full border-b border-inset bg-page/90 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#002F18]">
-              <FlaskConical className="h-4 w-4 text-[#E9F4EA]" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-forest-900">
+              <FlaskConical className="h-4 w-4 text-page" />
             </div>
-            <span className="font-extrabold tracking-tight text-[#0F1F17] text-lg">
-              Metal<span className="text-[#2E7D55]">Sense</span>
-            </span>
+            <div className="flex flex-col">
+              <span className="font-extrabold tracking-tight text-title text-lg flex items-center gap-1">
+                Metal <span className="text-forest-600">Sense</span>
+              </span>
+              <span className="text-[10px] text-caption tracking-wider uppercase -mt-1 hidden sm:inline font-bold">
+                Heavy Metal Pollution Intelligence
+              </span>
+            </div>
           </Link>
 
           <div className="flex items-center gap-3">
-            <Link to="/app/methodology" className="text-xs font-semibold text-[#4B5F54] hover:text-[#002F18] hidden sm:inline">
+            <Link to="/methodology" className="text-xs font-semibold text-body hover:text-forest-900 hidden sm:inline">
               Methodology
             </Link>
-            <Link to="/app/standards" className="text-xs font-semibold text-[#4B5F54] hover:text-[#002F18] hidden sm:inline">
+            <Link to="/app/standards" className="text-xs font-semibold text-body hover:text-forest-900 hidden sm:inline">
               Standards
             </Link>
             <Link to="/login">
@@ -129,16 +128,16 @@ export function LandingPage() {
       {/* Hero Section */}
       <section className="pt-16 pb-20 lg:pt-24 lg:pb-28">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 text-center space-y-6">
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#BED4BC] bg-[#ECF5EB] px-4 py-1.5 text-xs font-semibold text-[#002F18] shadow-sm">
-            <Sparkles className="w-3.5 h-3.5 text-[#2E7D55]" />
+          <div className="inline-flex items-center gap-2 rounded-full border border-inset bg-card px-4 py-1.5 text-xs font-semibold text-forest-900 shadow-sm">
+            <Sparkles className="w-3.5 h-3.5 text-forest-700" />
             <span>Auditable Groundwater Heavy Metal Intelligence</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-[#0F1F17] leading-[1.15]">
-            Heavy Metal Pollution Intelligence with <span className="text-[#2E7D55]">Mathematical Rigor</span>
+          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-title leading-[1.15]">
+            Heavy Metal Pollution Intelligence with <span className="text-forest-700">Mathematical Rigor</span>
           </h1>
 
-          <p className="max-w-2xl mx-auto text-base sm:text-lg text-[#4B5F54] leading-relaxed">
+          <p className="max-w-2xl mx-auto text-base sm:text-lg text-body leading-relaxed">
             Ingest laboratory water quality test reports, validate detection limits, calculate peer-reviewed pollution indices (HPI, HEI, C<sub>d</sub>), and generate statutory compliance dossiers.
           </p>
 
@@ -158,13 +157,13 @@ export function LandingPage() {
       </section>
 
       {/* 3-Step "How It Works" Section */}
-      <section className="py-16 bg-[#ECF5EB] border-y border-[#DFEADD]">
+      <section className="py-16 bg-card border-y border-inset">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0F1F17]">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-title">
               Three Steps from Lab Certificate to Audit Dossier
             </h2>
-            <p className="text-sm text-[#4B5F54] mt-2">
+            <p className="text-sm text-body mt-2">
               Engineered specifically for hydrologists, environmental laboratories, and municipal water authorities.
             </p>
           </div>
@@ -175,17 +174,17 @@ export function LandingPage() {
               return (
                 <div
                   key={s.step}
-                  className="rounded-[28px] border border-[#DFEADD] bg-[#F0FCEF] p-8 shadow-card flex flex-col justify-between"
+                  className="rounded-[28px] border border-inset bg-raised p-8 shadow-card flex flex-col justify-between"
                 >
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <div className="w-12 h-12 rounded-full bg-[#002F18] text-white flex items-center justify-center font-bold text-sm">
+                      <div className="w-12 h-12 rounded-full bg-forest-900 text-white flex items-center justify-center font-bold text-sm shadow-soft">
                         {s.step}
                       </div>
-                      <Icon className="w-6 h-6 text-[#2E7D55]" />
+                      <Icon className="w-6 h-6 text-forest-700" />
                     </div>
-                    <h3 className="text-lg font-bold text-[#0F1F17]">{s.title}</h3>
-                    <p className="text-xs text-[#4B5F54] leading-relaxed">{s.desc}</p>
+                    <h3 className="text-lg font-bold text-title">{s.title}</h3>
+                    <p className="text-xs text-body leading-relaxed">{s.desc}</p>
                   </div>
                 </div>
               );
@@ -198,10 +197,10 @@ export function LandingPage() {
       <section className="py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-12">
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#0F1F17]">
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-title">
               Peer-Reviewed Mathematical Indices
             </h2>
-            <p className="text-sm text-[#4B5F54] mt-2">
+            <p className="text-sm text-body mt-2">
               Every index is executed via pure TypeScript functions independent of LLMs, adhering strictly to published environmental literature.
             </p>
           </div>
@@ -214,13 +213,13 @@ export function LandingPage() {
                     <Badge variant="cyan" size="sm">
                       {idx.code}
                     </Badge>
-                    <span className="text-[11px] text-[#7C8F84] font-medium">{idx.citation}</span>
+                    <span className="text-[11px] text-caption font-semibold">{idx.citation}</span>
                   </div>
-                  <h3 className="text-base font-bold text-[#0F1F17]">{idx.name}</h3>
-                  <p className="text-xs text-[#4B5F54] leading-relaxed">{idx.desc}</p>
+                  <h3 className="text-base font-bold text-title">{idx.name}</h3>
+                  <p className="text-xs text-body leading-relaxed">{idx.desc}</p>
                 </div>
-                <div className="mt-4 pt-3 border-t border-[#DFEADD]">
-                  <div className="text-[11px] font-mono text-[#002F18] bg-[#DFEADD]/50 px-3 py-1.5 rounded-full font-bold">
+                <div className="mt-4 pt-3 border-t border-inset">
+                  <div className="text-[11px] font-mono text-forest-900 bg-inset/50 px-3 py-1.5 rounded-full font-bold">
                     {idx.formula}
                   </div>
                 </div>
@@ -231,11 +230,11 @@ export function LandingPage() {
       </section>
 
       {/* FAQ Accordion */}
-      <section className="py-16 bg-[#ECF5EB] border-t border-[#DFEADD]">
+      <section className="py-16 bg-card border-t border-inset">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <h2 className="text-2xl font-bold text-[#0F1F17]">Frequently Asked Questions</h2>
-            <p className="text-xs text-[#4B5F54] mt-1">Transparency on our methodology and security model.</p>
+            <h2 className="text-2xl font-bold text-title">Frequently Asked Questions</h2>
+            <p className="text-xs text-body mt-1">Transparency on our methodology and security model.</p>
           </div>
 
           <div className="space-y-3">
@@ -244,19 +243,19 @@ export function LandingPage() {
               return (
                 <div
                   key={index}
-                  className="rounded-[20px] border border-[#DFEADD] bg-[#F0FCEF] p-4 cursor-pointer transition-colors"
+                  className="rounded-[20px] border border-inset bg-raised p-4 cursor-pointer transition-colors"
                   onClick={() => setOpenFaq(isOpen ? null : index)}
                 >
                   <div className="flex items-center justify-between gap-4">
-                    <span className="font-bold text-sm text-[#0F1F17]">{faq.q}</span>
+                    <span className="font-bold text-sm text-title">{faq.q}</span>
                     <ChevronDown
-                      className={`w-4 h-4 text-[#2E7D55] transition-transform ${
+                      className={`w-4 h-4 text-forest-700 transition-transform ${
                         isOpen ? 'rotate-180' : ''
                       }`}
                     />
                   </div>
                   {isOpen && (
-                    <p className="text-xs text-[#4B5F54] leading-relaxed mt-2 pt-2 border-t border-[#DFEADD]">
+                    <p className="text-xs text-body leading-relaxed mt-2 pt-2 border-t border-inset">
                       {faq.a}
                     </p>
                   )}
@@ -268,25 +267,25 @@ export function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-8 border-t border-[#DFEADD] bg-[#E9F4EA] text-center text-xs text-[#7C8F84]">
+      <footer className="py-8 border-t border-inset bg-page text-center text-xs text-caption">
         <div className="mx-auto max-w-7xl px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <FlaskConical className="w-4 h-4 text-[#2E7D55]" />
-            <span className="font-bold text-[#0F1F17]">MetalSense Platform</span>
+            <FlaskConical className="w-4 h-4 text-forest-700" />
+            <span className="font-bold text-title">Metal Sense Platform</span>
             <span>&copy; {new Date().getFullYear()}</span>
           </div>
 
-          <div className="flex items-center gap-4 font-semibold text-[#4B5F54]">
-            <Link to="/app/methodology" className="hover:text-[#002F18]">
+          <div className="flex items-center gap-4 font-semibold text-body">
+            <Link to="/methodology" className="hover:text-forest-900">
               Methodology
             </Link>
-            <Link to="/app/standards" className="hover:text-[#002F18]">
+            <Link to="/app/standards" className="hover:text-forest-900">
               Standards
             </Link>
-            <Link to="/login" className="hover:text-[#002F18]">
+            <Link to="/login" className="hover:text-forest-900">
               Sign in
             </Link>
-            <Link to="/signup" className="hover:text-[#002F18]">
+            <Link to="/signup" className="hover:text-forest-900">
               Sign up
             </Link>
           </div>

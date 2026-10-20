@@ -1,14 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import {
-  BookOpen,
-  Calculator,
-  Scale,
-  ShieldCheck,
-  ArrowLeft,
-  ExternalLink,
-  AlertTriangle,
-} from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
@@ -17,8 +9,8 @@ import { MathBlock, MathInline } from '../../components/ui/Math';
 
 export function MethodologyPage() {
   return (
-    <div className="min-h-screen bg-[#E9F4EA] text-[#0F1F17] py-10 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-5xl mx-auto space-y-10">
+    <div className="min-h-screen bg-page text-title py-10 px-4 sm:px-6 lg:px-8 font-sans">
+      <div className="max-w-5xl mx-auto space-y-8">
         {/* Navigation & Breadcrumb */}
         <div className="flex items-center justify-between">
           <Link to="/">
@@ -33,19 +25,19 @@ export function MethodologyPage() {
 
         {/* Header */}
         <div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#0F1F17]">
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-title">
             Scientific Methodology &amp; Formula Specification
           </h1>
-          <p className="mt-2 text-base text-[#4B5F54]">
+          <p className="mt-2 text-base text-body">
             Mathematical equations, regulatory standards, parameters, and authoritative citations
-            governing deterministic calculations in MetalSense.
+            governing deterministic calculations in Metal Sense.
           </p>
         </div>
 
         {/* Scientific Integrity Statement */}
         <Alert variant="info" title="Mandatory Scientific Integrity Standard">
           Pollution indices are strictly mathematical functions of measured concentrations,
-          documented formulas, units, and selected reference limits. MetalSense never delegates
+          documented formulas, units, and selected reference limits. Metal Sense never delegates
           arithmetic to large language models. All calculations are executed by auditable,
           deterministic code.
         </Alert>
@@ -54,40 +46,40 @@ export function MethodologyPage() {
         <Card className="p-6">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <Badge variant="cyan">INDEX 01</Badge>
-              <span className="text-xs font-mono text-[#2E7D55]">
+              <Badge variant="safe">INDEX 01</Badge>
+              <span className="text-xs font-mono font-semibold text-forest-700">
                 Mohan et al. (1996) • Prasad &amp; Bose (2001)
               </span>
             </div>
-            <CardTitle className="text-xl font-bold text-[#0F1F17] mt-2">
+            <CardTitle className="text-xl font-bold mt-2">
               Heavy Metal Pollution Index (HPI)
             </CardTitle>
             <CardDescription>
               A weighted composite rating system representing the total heavy metal burden in drinking water.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 text-sm text-[#4B5F54]">
-            <div className="rounded-[20px] bg-[#F0FCEF] p-4 border border-[#DFEADD]">
+          <CardContent className="space-y-4 text-sm text-body">
+            <div className="rounded-[20px] bg-raised p-4 border border-inset">
               <MathBlock formula="\text{HPI} = \frac{\sum_{i=1}^{n} (W_i \cdot Q_i)}{\sum_{i=1}^{n} W_i}" />
             </div>
 
             <p>
               where <MathInline formula="W_i" /> is the unit weightage for the <MathInline formula="i" />-th parameter, inversely proportional to the maximum permissible concentration <MathInline formula="S_i" />:
             </p>
-            <div className="rounded-[20px] bg-[#F0FCEF] p-4 border border-[#DFEADD]">
+            <div className="rounded-[20px] bg-raised p-4 border border-inset">
               <MathBlock formula="W_i = \frac{k}{S_i} \quad (k = 1)" />
             </div>
 
             <p>
               and <MathInline formula="Q_i" /> is the individual sub-index rating of the <MathInline formula="i" />-th heavy metal:
             </p>
-            <div className="rounded-[20px] bg-[#F0FCEF] p-4 border border-[#DFEADD]">
+            <div className="rounded-[20px] bg-raised p-4 border border-inset">
               <MathBlock formula="Q_i = \frac{|M_i - I_i|}{S_i - I_i} \times 100" />
             </div>
             <p className="text-xs leading-relaxed">
               where <MathInline formula="M_i" /> is the monitored concentration, <MathInline formula="I_i" /> is the ideal desirable value (0 for toxic heavy metals), and <MathInline formula="S_i" /> is the standard permissible limit.
             </p>
-            <div className="p-3 bg-[#DDF3E6] rounded-[20px] text-xs text-[#1F8A5B] font-semibold">
+            <div className="p-3.5 bg-status-critical-bg border border-status-critical-border rounded-[20px] text-xs text-status-critical-text font-bold">
               Critical Classification Threshold: HPI &ge; 100 denotes water critically contaminated with heavy metals.
             </div>
           </CardContent>
@@ -97,31 +89,31 @@ export function MethodologyPage() {
         <Card className="p-6">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <Badge variant="cyan">INDEX 02</Badge>
-              <span className="text-xs font-mono text-[#2E7D55]">Edet &amp; Offiong (2002)</span>
+              <Badge variant="safe">INDEX 02</Badge>
+              <span className="text-xs font-mono font-semibold text-forest-700">Edet &amp; Offiong (2002)</span>
             </div>
-            <CardTitle className="text-xl font-bold text-[#0F1F17] mt-2">
+            <CardTitle className="text-xl font-bold mt-2">
               Heavy Metal Evaluation Index (HEI)
             </CardTitle>
             <CardDescription>
               A cumulative toxicological ratio comparing measured concentrations against maximum admissible concentrations.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 text-sm text-[#4B5F54]">
-            <div className="rounded-[20px] bg-[#F0FCEF] p-4 border border-[#DFEADD]">
+          <CardContent className="space-y-4 text-sm text-body">
+            <div className="rounded-[20px] bg-raised p-4 border border-inset">
               <MathBlock formula="\text{HEI} = \sum_{i=1}^{n} \frac{H_c}{H_{\text{mac}}}" />
             </div>
             <p>
               where <MathInline formula="H_c" /> is the monitored concentration and <MathInline formula="H_{\text{mac}}" /> is the maximum admissible concentration specified by the regulatory standard.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-2">
-              <div className="p-3 rounded-[20px] bg-[#DDF3E6] text-[#1F8A5B] font-semibold">
+              <div className="p-3 rounded-[20px] bg-status-safe-bg border border-status-safe-border text-status-safe-text font-bold">
                 Low Pollution: HEI &lt; 10
               </div>
-              <div className="p-3 rounded-[20px] bg-[#FBF0D6] text-[#B7791F] font-semibold">
+              <div className="p-3 rounded-[20px] bg-status-warning-bg border border-status-warning-border text-status-warning-text font-bold">
                 Medium Pollution: 10 &le; HEI &le; 20
               </div>
-              <div className="p-3 rounded-[20px] bg-[#FBE3E1] text-[#C2413B] font-semibold">
+              <div className="p-3 rounded-[20px] bg-status-critical-bg border border-status-critical-border text-status-critical-text font-bold">
                 High Pollution: HEI &gt; 20
               </div>
             </div>
@@ -132,31 +124,31 @@ export function MethodologyPage() {
         <Card className="p-6">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <Badge variant="cyan">INDEX 03</Badge>
-              <span className="text-xs font-mono text-[#2E7D55]">Backman et al. (1998)</span>
+              <Badge variant="safe">INDEX 03</Badge>
+              <span className="text-xs font-mono font-semibold text-forest-700">Backman et al. (1998)</span>
             </div>
-            <CardTitle className="text-xl font-bold text-[#0F1F17] mt-2">
+            <CardTitle className="text-xl font-bold mt-2">
               Degree of Contamination (C<sub>d</sub>)
             </CardTitle>
             <CardDescription>
               Evaluates the degree of contamination by summing the contamination factors of all exceeded elements.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 text-sm text-[#4B5F54]">
-            <div className="rounded-[20px] bg-[#F0FCEF] p-4 border border-[#DFEADD]">
+          <CardContent className="space-y-4 text-sm text-body">
+            <div className="rounded-[20px] bg-raised p-4 border border-inset">
               <MathBlock formula="C_d = \sum_{i=1}^{n} C_{fi} \quad \text{where} \quad C_{fi} = \frac{C_{Ai}}{C_{Ni}} - 1" />
             </div>
             <p>
               where <MathInline formula="C_{Ai}" /> is the monitored concentration and <MathInline formula="C_{Ni}" /> is the upper permissible limit (<MathInline formula="S_i" />).
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-2">
-              <div className="p-3 rounded-[20px] bg-[#DDF3E6] text-[#1F8A5B] font-semibold">
+              <div className="p-3 rounded-[20px] bg-status-safe-bg border border-status-safe-border text-status-safe-text font-bold">
                 Low Contamination: C<sub>d</sub> &lt; 1
               </div>
-              <div className="p-3 rounded-[20px] bg-[#FBF0D6] text-[#B7791F] font-semibold">
+              <div className="p-3 rounded-[20px] bg-status-warning-bg border border-status-warning-border text-status-warning-text font-bold">
                 Medium Contamination: 1 &le; C<sub>d</sub> &le; 3
               </div>
-              <div className="p-3 rounded-[20px] bg-[#FBE3E1] text-[#C2413B] font-semibold">
+              <div className="p-3 rounded-[20px] bg-status-critical-bg border border-status-critical-border text-status-critical-text font-bold">
                 High Contamination: C<sub>d</sub> &gt; 3
               </div>
             </div>
@@ -166,11 +158,11 @@ export function MethodologyPage() {
         {/* Traceable Literature Citations */}
         <Card className="p-6">
           <CardHeader>
-            <CardTitle className="text-lg font-bold text-[#0F1F17]">
+            <CardTitle className="text-lg font-bold">
               Peer-Reviewed Scientific Citations
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 text-xs text-[#4B5F54] leading-relaxed">
+          <CardContent className="space-y-3 text-xs text-body leading-relaxed">
             <div>
               <strong>Mohan, S. V., Nithila, P., &amp; Reddy, S. J. (1996).</strong> Estimation of heavy metal in drinking water and development of heavy metal pollution index. <em>Journal of Environmental Science &amp; Health Part A</em>, 31(2), 283–289.
             </div>

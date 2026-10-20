@@ -25,7 +25,7 @@ export function StatusBadge({ status, label, className }: StatusBadgeProps) {
     case 'within_acceptable':
       return (
         <Badge variant="safe" className={className}>
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          <CheckCircle2 className="w-3.5 h-3.5 text-status-safe shrink-0" />
           <span>{label || (status === 'low' ? 'Low Pollution' : 'Within Acceptable')}</span>
         </Badge>
       );
@@ -33,7 +33,7 @@ export function StatusBadge({ status, label, className }: StatusBadgeProps) {
     case 'within_permissible':
       return (
         <Badge variant="moderate" className={className}>
-          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          <AlertTriangle className="w-3.5 h-3.5 text-status-warning shrink-0" />
           <span>{label || (status === 'medium' ? 'Moderate Pollution' : 'Within Permissible')}</span>
         </Badge>
       );
@@ -42,7 +42,7 @@ export function StatusBadge({ status, label, className }: StatusBadgeProps) {
     case 'exceeds_permissible':
       return (
         <Badge variant="high" className={className}>
-          <AlertOctagon className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+          <AlertOctagon className="w-3.5 h-3.5 text-status-critical shrink-0" />
           <span>
             {label ||
               (status === 'critical'
@@ -57,7 +57,7 @@ export function StatusBadge({ status, label, className }: StatusBadgeProps) {
     default:
       return (
         <Badge variant="unverified" className={className}>
-          <HelpCircle className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <HelpCircle className="w-3.5 h-3.5 text-caption shrink-0" />
           <span>{label || 'Unverified / Not Evaluated'}</span>
         </Badge>
       );

@@ -4,6 +4,29 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Direct Semantic Design Tokens
+        page: '#E9F4EA',         // Page background
+        card: '#ECF5EB',         // Main card surface
+        inset: '#DFEADD',        // Inset panel / subtle container
+        raised: '#F0FCEF',       // Input field / elevated chip
+        title: '#0F1F17',        // Primary headings (h1/h2/h3)
+        body: '#4B5F54',         // Body paragraphs / labels (min 4.5:1)
+        caption: '#5A7064',      // Accessible caption text (min 4.7:1)
+        placeholder: '#7C8F84',  // Form placeholder text
+        pill: {
+          selected: '#002F18',
+          unselected: '#DDEBDB',
+        },
+        primary: {
+          DEFAULT: '#002F18',
+          hover: '#0B4A2C',
+          dark: '#002F18',
+        },
+        accent: {
+          DEFAULT: '#2E7D55',
+          hover: '#1D6440',
+        },
+
         // Soft Mint & Deep Forest Green Palette (Template Specification)
         forest: {
           900: '#002F18', // Primary ink, selected pills, headings
@@ -24,16 +47,26 @@ export default {
           900: '#0F1F17', // Headings, titles
           700: '#2C3E34',
           600: '#4B5F54', // Body text
-          400: '#7C8F84', // Captions & subtle text
-          300: '#A3B4AA',
+          400: '#5A7064', // Accessible captions & subtle text (min 4.5:1)
+          300: '#7C8F84', // Subtle placeholder / borders
         },
         status: {
+          info: '#2E7D55',
+          'info-bg': '#F0FCEF',
+          'info-border': '#BED4BC',
           safe: '#1F8A5B',
           'safe-bg': '#DDF3E6',
+          'safe-border': '#A6E1BE',
+          'safe-text': '#0E5634',
           warning: '#B7791F',
           'warning-bg': '#FBF0D6',
+          'warning-border': '#F5DC9A',
+          'warning-text': '#7A4B00',
           critical: '#C2413B',
           'critical-bg': '#FBE3E1',
+          'critical-border': '#F6BDB8',
+          'critical-text': '#962420',
+          'critical-hover': '#A9322D',
         },
       },
       fontFamily: {

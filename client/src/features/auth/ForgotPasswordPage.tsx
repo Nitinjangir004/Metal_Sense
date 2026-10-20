@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Shield, ArrowRight, ArrowLeft, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { Input } from '../../components/ui/Input';
+import { Button } from '../../components/ui/Button';
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -34,40 +36,40 @@ export function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#E9F4EA] flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans selection:bg-[#002F18] selection:text-white">
+    <div className="min-h-screen bg-page flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans selection:bg-forest-900 selection:text-white">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         <Link to="/" className="inline-flex items-center gap-2 mb-4">
-          <div className="w-10 h-10 rounded-full bg-[#002F18] flex items-center justify-center text-white shadow-sm">
-            <Shield className="w-5 h-5 text-[#E9F4EA]" />
+          <div className="w-10 h-10 rounded-full bg-forest-900 flex items-center justify-center text-white shadow-sm">
+            <Shield className="w-5 h-5 text-page" />
           </div>
-          <span className="text-2xl font-bold tracking-tight text-[#0F1F17]">MetalSense</span>
+          <span className="text-2xl font-bold tracking-tight text-title">Metal Sense</span>
         </Link>
-        <h1 className="text-3xl font-extrabold text-[#0F1F17] tracking-tight">Reset your password</h1>
-        <p className="mt-2 text-sm text-[#4B5F54]">
+        <h1 className="text-3xl font-extrabold text-title tracking-tight">Reset your password</h1>
+        <p className="mt-2 text-sm text-body">
           Enter your email to receive password reset instructions.
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4">
-        <div className="bg-[#ECF5EB] py-8 px-6 sm:px-10 shadow-[0_8px_30px_rgba(0,47,24,0.06)] rounded-[28px] border border-[#DFEADD]">
+        <div className="bg-card py-8 px-6 sm:px-10 shadow-soft rounded-card border border-inset">
           {error && (
-            <div className="mb-6 p-4 rounded-[20px] bg-[#FBE3E1] border border-[#F5C2BF] flex items-start gap-3 text-sm text-[#C2413B]">
+            <div className="mb-6 p-4 rounded-panel bg-status-critical-bg border border-status-critical-border flex items-start gap-3 text-sm text-status-critical">
               <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
           )}
 
           {statusMessage && (
-            <div className="mb-6 p-4 rounded-[20px] bg-[#DDF3E6] border border-[#BCE8CD] flex items-start gap-3 text-sm text-[#1F8A5B]">
+            <div className="mb-6 p-4 rounded-panel bg-status-safe-bg border border-status-safe-border flex items-start gap-3 text-sm text-status-safe">
               <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
               <div>
                 <p>{statusMessage}</p>
                 {resetToken && (
-                  <div className="mt-3 pt-3 border-t border-[#BCE8CD] text-xs">
-                    <p className="font-semibold text-[#002F18]">Development Reset Shortcut:</p>
+                  <div className="mt-3 pt-3 border-t border-status-safe-border text-xs">
+                    <p className="font-semibold text-forest-900">Development Reset Shortcut:</p>
                     <Link
                       to={`/reset-password/${resetToken}`}
-                      className="underline font-mono text-[#002F18] break-all block mt-1"
+                      className="underline font-mono text-forest-900 break-all block mt-1"
                     >
                       Click here to reset your password &rarr;
                     </Link>
@@ -79,10 +81,10 @@ export function ForgotPasswordPage() {
 
           <form className="space-y-5" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-wider text-[#4B5F54] mb-1.5 ml-1">
+              <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-wider text-body mb-1.5 ml-1">
                 Account Email
               </label>
-              <input
+              <Input
                 id="email"
                 name="email"
                 type="email"
@@ -90,14 +92,13 @@ export function ForgotPasswordPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="analyst@laboratory.org"
-                className="w-full px-5 py-3 rounded-full bg-[#F0FCEF] border border-[#DDEBDB] text-[#0F1F17] placeholder-[#7C8F84] text-sm focus:outline-none focus:ring-2 focus:ring-[#002F18] transition-all"
               />
             </div>
 
-            <button
+            <Button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3.5 px-6 rounded-full bg-[#002F18] hover:bg-[#0B4A2C] text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-[0.98]"
+              className="w-full h-11"
             >
               {isLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -107,13 +108,13 @@ export function ForgotPasswordPage() {
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
-            </button>
+            </Button>
           </form>
 
           <div className="mt-6 text-center">
             <Link
               to="/login"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#002F18] hover:underline"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-forest-900 hover:underline"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               <span>Back to sign in</span>

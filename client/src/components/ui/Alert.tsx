@@ -15,17 +15,17 @@ export function Alert({
   ...props
 }: AlertProps) {
   const variants = {
-    info: 'bg-[#F0FCEF] border-[#BED4BC] text-[#002F18]',
-    success: 'bg-[#DDF3E6] border-[#A6E1BE] text-[#1F8A5B]',
-    warning: 'bg-[#FBF0D6] border-[#F5DC9A] text-[#B7791F]',
-    danger: 'bg-[#FBE3E1] border-[#F6BDB8] text-[#C2413B]',
+    info: 'bg-status-info-bg border-status-info-border text-forest-900',
+    success: 'bg-status-safe-bg border-status-safe-border text-status-safe',
+    warning: 'bg-status-warning-bg border-status-warning-border text-status-warning',
+    danger: 'bg-status-critical-bg border-status-critical-border text-status-critical',
   };
 
   const icons = {
-    info: <Info className="w-5 h-5 text-[#2E7D55] shrink-0 mt-0.5" />,
-    success: <CheckCircle className="w-5 h-5 text-[#1F8A5B] shrink-0 mt-0.5" />,
-    warning: <AlertTriangle className="w-5 h-5 text-[#B7791F] shrink-0 mt-0.5" />,
-    danger: <AlertCircle className="w-5 h-5 text-[#C2413B] shrink-0 mt-0.5" />,
+    info: <Info className="w-5 h-5 text-forest-500 shrink-0 mt-0.5" />,
+    success: <CheckCircle className="w-5 h-5 text-status-safe shrink-0 mt-0.5" />,
+    warning: <AlertTriangle className="w-5 h-5 text-status-warning shrink-0 mt-0.5" />,
+    danger: <AlertCircle className="w-5 h-5 text-status-critical shrink-0 mt-0.5" />,
   };
 
   return (

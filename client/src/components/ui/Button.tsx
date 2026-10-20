@@ -26,19 +26,19 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      'inline-flex items-center justify-center font-semibold rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#002F18] focus-visible:ring-offset-2 focus-visible:ring-offset-[#E9F4EA] disabled:opacity-50 disabled:pointer-events-none select-none active:scale-[0.98]';
+      'inline-flex items-center justify-center font-semibold rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest-900 focus-visible:ring-offset-2 focus-visible:ring-offset-page disabled:opacity-50 disabled:pointer-events-none select-none active:scale-[0.98] cursor-pointer';
 
     const variants = {
       primary:
-        'bg-[#002F18] hover:bg-[#0B4A2C] text-white shadow-soft',
+        'bg-forest-900 hover:bg-forest-700 text-white shadow-soft',
       secondary:
-        'bg-[#DFEADD] hover:bg-[#DDEBDB] text-[#002F18] border border-[#BED4BC]/40 shadow-sm',
+        'bg-pill-unselected hover:bg-inset text-title border border-inset shadow-sm',
       outline:
-        'border border-[#BED4BC] text-[#002F18] bg-transparent hover:bg-[#DFEADD]/60',
+        'border border-inset text-title bg-transparent hover:bg-inset/60',
       ghost:
-        'text-[#002F18] hover:bg-[#DFEADD]/40 active:bg-[#DFEADD]/70',
+        'text-title hover:bg-inset/40 active:bg-inset/70',
       danger:
-        'bg-[#C2413B] hover:bg-[#A9322D] text-white shadow-soft',
+        'bg-status-critical hover:bg-status-critical-hover text-white shadow-soft',
     };
 
     const sizes = {

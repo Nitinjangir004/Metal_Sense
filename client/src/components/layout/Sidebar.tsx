@@ -40,7 +40,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* Mobile Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-forest-900/40 backdrop-blur-sm lg:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -49,19 +49,19 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* Sidebar Container */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-[#DFEADD] bg-[#DFEADD]/50 p-4 transition-transform duration-300 ease-in-out lg:static lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-inset bg-inset/50 p-4 transition-transform duration-300 ease-in-out lg:static lg:translate-x-0',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* Workspace Identifier */}
-        <div className="mb-4 rounded-[20px] border border-[#BED4BC]/60 bg-[#ECF5EB] p-4 shadow-sm">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-[#7C8F84]">
+        <div className="mb-4 rounded-[20px] border border-inset bg-card p-4 shadow-sm">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-caption">
             Active Workspace
           </div>
-          <div className="mt-1 font-bold text-[#0F1F17] truncate text-sm">
+          <div className="mt-1 font-bold text-title truncate text-sm">
             {activeWorkspace?.name || 'Default Workspace'}
           </div>
-          <div className="mt-1 text-[11px] text-[#2E7D55] font-semibold">
+          <div className="mt-1 text-[11px] text-forest-700 font-semibold">
             {activeWorkspace?.defaultStandard || 'BIS_10500_2012'}
           </div>
         </div>
@@ -73,7 +73,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             onClick={() => {
               if (window.innerWidth < 1024) onClose();
             }}
-            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-full bg-[#002F18] text-white hover:bg-[#0B4A2C] transition-all font-semibold text-xs shadow-soft"
+            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-full bg-forest-900 text-white hover:bg-forest-700 transition-all font-semibold text-xs shadow-soft cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Add New Sample</span>
@@ -96,8 +96,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   cn(
                     'group flex items-center justify-between rounded-full px-4 py-2.5 text-xs font-semibold transition-all',
                     isActive
-                      ? 'bg-[#002F18] text-white shadow-soft'
-                      : 'text-[#4B5F54] hover:bg-[#ECF5EB] hover:text-[#0F1F17]'
+                      ? 'bg-forest-900 text-white shadow-soft'
+                      : 'text-body hover:bg-card hover:text-title'
                   )
                 }
               >

@@ -7,19 +7,27 @@ import {
   Plus,
   Trash2,
   CheckCircle2,
-  AlertCircle,
   ArrowRight,
   ArrowLeft,
   Download,
   Upload,
   Loader2,
-  Sparkles,
-  RefreshCw,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Alert } from '../../components/ui/Alert';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '../../components/ui/Table';
 import {
   CANONICAL_METALS,
   MetalSymbol,
@@ -28,6 +36,7 @@ import {
 } from '@metalsense/shared';
 import { useAuth } from '../auth/AuthContext';
 import { usePreviewCsv, useImportCsv, useUploadDocument } from '../../lib/api';
+import { cn } from '../../lib/utils';
 
 export function NewSampleWizard() {
   const navigate = useNavigate();
@@ -67,7 +76,8 @@ export function NewSampleWizard() {
   ]);
 
   // CSV State
-  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [, setCsvFile] = useState<File | null>(null);
+  const [isDraggingCsv, setIsDraggingCsv] = useState(false);
   const [csvPreviewData, setCsvPreviewData] = useState<{
     fileName: string;
     totalRows: number;
@@ -83,6 +93,7 @@ export function NewSampleWizard() {
 
   // Document Upload State
   const [docFile, setDocFile] = useState<File | null>(null);
+  const [isDraggingDoc, setIsDraggingDoc] = useState(false);
   const uploadDocMutation = useUploadDocument(workspaceId);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -100,47 +111,24 @@ export function NewSampleWizard() {
     window.location.href = '/api/v1/imports/template.csv';
   };
 
-  const handleLoadExampleCsv = async () => {
+  const handleProcessCsvFile = async (file: File) => {
+    setCsvFile(file);
     setFeedback(null);
-    try {
-      const res = await fetch('/examples/groundwater_lab_samples.csv');
-      let text = '';
-      if (res.ok) {
-        text = await res.text();
-      } else {
-        text = `SampleCode,LocationName,District,Latitude,Longitude,CollectionDate,SampleMatrix,LabName,ReportNumber,As_mg_L,Cd_mg_L,Cr_mg_L,Cu_mg_L,Fe_mg_L,Mn_mg_L,Ni_mg_L,Pb_mg_L,Zn_mg_L,Notes
-GW-KAN-01,Jajmau Industrial Area Borewell 1,Kanpur,26.4312,80.3995,2026-03-15T09:30:00Z,groundwater,SGS Environmental Services,ENV-2026-0491,0.045,0.008,0.120,0.450,1.850,0.620,0.085,0.035,4.200,Industrial discharge zone near tannery cluster
-GW-KAN-02,Civil Lines Community Handpump,Kanpur,26.4725,80.3489,2026-03-15T11:00:00Z,groundwater,SGS Environmental Services,ENV-2026-0492,< 0.001,< 0.001,0.012,0.080,0.180,0.050,0.005,< 0.005,0.850,Municipal deep aquifer community tap
-GW-VAR-01,Assi Ghat Deep Tube Well,Varanasi,25.2891,83.0076,2026-03-16T08:15:00Z,groundwater,National Hydrology Research Lab,NHR-8821-A,0.028,< 0.001,0.025,0.150,0.780,0.310,0.018,0.015,1.200,Holocene alluvial aquifer monitoring point
-GW-VAR-02,Ramnagar Rural Agricultural Borewell,Varanasi,25.2690,83.0289,2026-03-16T10:45:00Z,groundwater,National Hydrology Research Lab,NHR-8821-B,0.012,< 0.001,0.008,0.040,0.420,0.120,0.008,< 0.005,0.450,Agricultural irrigation tube well
-GW-PAT-01,Danapur Peri-Urban Handpump,Patna,25.6322,85.0441,2026-03-17T09:00:00Z,groundwater,Bihar State Water Testing Lab,BSWT-2026-104,0.085,0.002,0.018,0.220,2.400,0.850,0.022,0.028,2.100,Known endemic arsenic hotspot in older alluvium`;
-      }
 
-      const preview = await previewCsvMutation.mutateAsync({
-        csvText: text,
-        fileName: 'groundwater_lab_samples.csv',
-      });
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const preview = await previewCsvMutation.mutateAsync(formData);
       setCsvPreviewData(preview);
     } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || 'Failed to parse example CSV.' });
+      setFeedback({ type: 'error', message: err.message || 'Failed to preview CSV file.' });
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setCsvFile(file);
-      setFeedback(null);
-
-      const formData = new FormData();
-      formData.append('file', file);
-
-      try {
-        const preview = await previewCsvMutation.mutateAsync(formData);
-        setCsvPreviewData(preview);
-      } catch (err: any) {
-        setFeedback({ type: 'error', message: err.message || 'Failed to preview CSV file.' });
-      }
+      handleProcessCsvFile(e.target.files[0]);
     }
   };
 
@@ -159,48 +147,47 @@ GW-PAT-01,Danapur Peri-Urban Handpump,Patna,25.6322,85.0441,2026-03-17T09:00:00Z
       } else {
         setFeedback({
           type: 'error',
-          message: 'No valid samples could be ingested. Check row errors.',
+          message: 'No valid samples could be imported. Please verify row format.',
         });
       }
     } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || 'CSV ingestion failed.' });
+      setFeedback({ type: 'error', message: err.message || 'Failed to import CSV samples.' });
     }
   };
 
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!workspaceId) return;
+
     setIsSubmittingManual(true);
     setFeedback(null);
 
     try {
+      const measurements = rows.map((r) => ({
+        symbol: r.symbol,
+        name: CANONICAL_METALS[r.symbol]?.name || r.symbol,
+        value: parseFloat(r.value),
+        unit: r.unit,
+        qualifier: r.qualifier,
+      }));
+
       const payload = {
-        sampleCode,
-        sampleMatrix: sampleMatrix as any,
+        workspaceId,
+        projectId: 'proj-default',
+        sampleCode: sampleCode.trim(),
+        sampleMatrix,
         collectionDate: new Date(collectionDate).toISOString(),
         location: {
           id: `loc-${Date.now()}`,
-          name: locationName,
-          code: `LOC-${sampleCode}`,
-          district: district || undefined,
-          country: 'India',
-          isSensitive: false,
+          name: locationName.trim(),
+          code: sampleCode.trim(),
           coordinates:
             latitude && longitude
-              ? {
-                  latitude: parseFloat(latitude),
-                  longitude: parseFloat(longitude),
-                }
+              ? { latitude: parseFloat(latitude), longitude: parseFloat(longitude) }
               : undefined,
+          district: district.trim(),
         },
-        measurements: rows.map((r) => ({
-          symbol: r.symbol,
-          name: CANONICAL_METALS[r.symbol]?.name || r.symbol,
-          value: parseFloat(r.value),
-          unit: r.unit,
-          qualifier: r.qualifier,
-          detectionLimit: r.qualifier === '<' ? parseFloat(r.value) : undefined,
-        })),
+        measurements,
         provenance: {
           method: 'manual' as const,
           isDemo: false,
@@ -210,19 +197,18 @@ GW-PAT-01,Danapur Peri-Urban Handpump,Patna,25.6322,85.0441,2026-03-17T09:00:00Z
       const res = await fetch(`/api/v1/workspaces/${workspaceId}/samples`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
-        const errJson = await res.json();
-        throw new Error(errJson.error || 'Failed to create sample.');
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to save sample');
       }
 
-      const json = await res.json();
-      navigate(`/app/samples/${json.data.sample.id}`);
+      const data = await res.json();
+      navigate(`/app/samples/${data.data.sample.id}`);
     } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || 'Error creating sample' });
+      setFeedback({ type: 'error', message: err.message || 'Submission failed' });
     } finally {
       setIsSubmittingManual(false);
     }
@@ -245,23 +231,19 @@ GW-PAT-01,Danapur Peri-Urban Handpump,Patna,25.6322,85.0441,2026-03-17T09:00:00Z
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <Link to="/app/samples">
-          <Button variant="ghost" size="sm" leftIcon={<ArrowLeft className="w-4 h-4" />}>
-            Back to Registry
-          </Button>
-        </Link>
-        <Badge variant="cyan">INGESTION</Badge>
-      </div>
-
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-white">
-          Add Laboratory Measurement Data
-        </h1>
-        <p className="text-sm text-slate-400 mt-1">
-          Active Workspace: <span className="font-semibold text-teal-300">{activeWorkspace?.name}</span>
-        </p>
-      </div>
+      <PageHeader
+        title="Add Laboratory Measurement Data"
+        workspaceName={activeWorkspace?.name}
+        description="Ingest chemical measurements via single-point entry, batch CSV dataset, or multimodal lab certificate extraction."
+        badge={<Badge variant="cyan">INGESTION</Badge>}
+        actions={
+          <Link to="/app/samples">
+            <Button variant="secondary" size="sm" leftIcon={<ArrowLeft className="w-4 h-4" />}>
+              Back to Registry
+            </Button>
+          </Link>
+        }
+      />
 
       {feedback && (
         <Alert variant={feedback.type === 'success' ? 'success' : 'danger'}>
@@ -269,23 +251,38 @@ GW-PAT-01,Danapur Peri-Urban Handpump,Patna,25.6322,85.0441,2026-03-17T09:00:00Z
         </Alert>
       )}
 
-      {/* Mode Switcher Tabs */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* Mode Switcher: 3 Equal Pill Tabs */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <button
           type="button"
           onClick={() => {
             setEntryMode('manual');
             setFeedback(null);
           }}
-          className={`p-4 rounded-xl border text-left transition-all ${
+          className={cn(
+            'p-4 rounded-[28px] border text-left transition-all cursor-pointer',
             entryMode === 'manual'
-              ? 'border-teal-500 bg-teal-950/40 text-white shadow-sm shadow-teal-950'
-              : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:bg-slate-900'
-          }`}
+              ? 'border-forest-900 bg-forest-900 text-white shadow-soft'
+              : 'border-inset bg-pill-unselected text-title hover:bg-inset'
+          )}
         >
-          <FlaskConical className="w-5 h-5 text-teal-400 mb-2" />
-          <div className="font-semibold text-sm">Manual Entry</div>
-          <div className="text-xs text-slate-400 mt-1">Single sample form with live validation</div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <FlaskConical
+              className={cn(
+                'w-4 h-4',
+                entryMode === 'manual' ? 'text-page' : 'text-forest-700'
+              )}
+            />
+            <span className="font-bold text-sm">Manual Entry</span>
+          </div>
+          <p
+            className={cn(
+              'text-xs leading-relaxed',
+              entryMode === 'manual' ? 'text-page/80' : 'text-body'
+            )}
+          >
+            Single sample form with live scientific validation
+          </p>
         </button>
 
         <button
@@ -294,15 +291,30 @@ GW-PAT-01,Danapur Peri-Urban Handpump,Patna,25.6322,85.0441,2026-03-17T09:00:00Z
             setEntryMode('csv');
             setFeedback(null);
           }}
-          className={`p-4 rounded-xl border text-left transition-all ${
+          className={cn(
+            'p-4 rounded-[28px] border text-left transition-all cursor-pointer',
             entryMode === 'csv'
-              ? 'border-teal-500 bg-teal-950/40 text-white shadow-sm shadow-teal-950'
-              : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:bg-slate-900'
-          }`}
+              ? 'border-forest-900 bg-forest-900 text-white shadow-soft'
+              : 'border-inset bg-pill-unselected text-title hover:bg-inset'
+          )}
         >
-          <FileSpreadsheet className="w-5 h-5 text-teal-400 mb-2" />
-          <div className="font-semibold text-sm">CSV Batch Import</div>
-          <div className="text-xs text-slate-400 mt-1">3-step validation &amp; batch ingest</div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <FileSpreadsheet
+              className={cn(
+                'w-4 h-4',
+                entryMode === 'csv' ? 'text-page' : 'text-forest-700'
+              )}
+            />
+            <span className="font-bold text-sm">CSV Batch Import</span>
+          </div>
+          <p
+            className={cn(
+              'text-xs leading-relaxed',
+              entryMode === 'csv' ? 'text-page/80' : 'text-body'
+            )}
+          >
+            3-step validation &amp; batch ingest
+          </p>
         </button>
 
         <button
@@ -311,138 +323,152 @@ GW-PAT-01,Danapur Peri-Urban Handpump,Patna,25.6322,85.0441,2026-03-17T09:00:00Z
             setEntryMode('document');
             setFeedback(null);
           }}
-          className={`p-4 rounded-xl border text-left transition-all ${
+          className={cn(
+            'p-4 rounded-[28px] border text-left transition-all cursor-pointer',
             entryMode === 'document'
-              ? 'border-teal-500 bg-teal-950/40 text-white shadow-sm shadow-teal-950'
-              : 'border-slate-800 bg-slate-900/60 text-slate-400 hover:bg-slate-900'
-          }`}
+              ? 'border-forest-900 bg-forest-900 text-white shadow-soft'
+              : 'border-inset bg-pill-unselected text-title hover:bg-inset'
+          )}
         >
-          <FileSearch className="w-5 h-5 text-teal-400 mb-2" />
-          <div className="font-semibold text-sm">Lab Report OCR</div>
-          <div className="text-xs text-slate-400 mt-1">PDF &amp; Image extraction with review</div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <FileSearch
+              className={cn(
+                'w-4 h-4',
+                entryMode === 'document' ? 'text-page' : 'text-forest-700'
+              )}
+            />
+            <span className="font-bold text-sm">Lab Report OCR</span>
+          </div>
+          <p
+            className={cn(
+              'text-xs leading-relaxed',
+              entryMode === 'document' ? 'text-page/80' : 'text-body'
+            )}
+          >
+            PDF &amp; Image extraction with review
+          </p>
         </button>
       </div>
 
       {/* Mode 1: Manual Entry */}
       {entryMode === 'manual' && (
         <form onSubmit={handleManualSubmit} className="space-y-6">
-          <Card className="border-slate-800 bg-slate-900/80">
+          <Card>
             <CardHeader>
-              <CardTitle className="text-base font-semibold text-white">
-                Sample Metadata &amp; Location
-              </CardTitle>
+              <CardTitle>Sample Metadata &amp; Location</CardTitle>
+              <CardDescription>
+                Define provenance, sampling matrix, field location, and optional GPS coordinates.
+              </CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
               <div>
-                <label className="block text-slate-300 font-medium mb-1">
-                  Sample Identifier / Code <span className="text-rose-400">*</span>
+                <label className="block text-body font-semibold mb-1.5 ml-1">
+                  Sample Identifier / Code <span className="text-status-critical">*</span>
                 </label>
-                <input
+                <Input
                   type="text"
                   required
                   placeholder="e.g. GW-2026-NSP-01"
                   value={sampleCode}
                   onChange={(e) => setSampleCode(e.target.value)}
-                  className="w-full rounded-lg bg-slate-950 border border-slate-700/80 px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 font-mono text-xs"
+                  className="font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-medium mb-1">
-                  Sample Matrix <span className="text-rose-400">*</span>
+                <label className="block text-body font-semibold mb-1.5 ml-1">
+                  Sample Matrix <span className="text-status-critical">*</span>
                 </label>
-                <select
+                <Select
                   value={sampleMatrix}
                   onChange={(e) => setSampleMatrix(e.target.value)}
-                  className="w-full rounded-lg bg-slate-950 border border-slate-700/80 px-3 py-2 text-white focus:outline-none focus:border-teal-500 text-xs"
                 >
                   <option value="groundwater">Groundwater / Borewell</option>
                   <option value="drinking_water">Treated Drinking Water</option>
                   <option value="surface_water">Surface Water / River</option>
-                </select>
+                </Select>
               </div>
 
               <div>
-                <label className="block text-slate-300 font-medium mb-1">
-                  Location Name / Well Number <span className="text-rose-400">*</span>
+                <label className="block text-body font-semibold mb-1.5 ml-1">
+                  Location Name / Well Number <span className="text-status-critical">*</span>
                 </label>
-                <input
+                <Input
                   type="text"
                   required
                   placeholder="e.g. Industrial Sub-basin Well #4"
                   value={locationName}
                   onChange={(e) => setLocationName(e.target.value)}
-                  className="w-full rounded-lg bg-slate-950 border border-slate-700/80 px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 text-xs"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-medium mb-1">
-                  District / State <span className="text-rose-400">*</span>
+                <label className="block text-body font-semibold mb-1.5 ml-1">
+                  District / State <span className="text-status-critical">*</span>
                 </label>
-                <input
+                <Input
                   type="text"
                   required
                   placeholder="e.g. Kanpur, Uttar Pradesh"
                   value={district}
                   onChange={(e) => setDistrict(e.target.value)}
-                  className="w-full rounded-lg bg-slate-950 border border-slate-700/80 px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 text-xs"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-medium mb-1">Latitude (Optional)</label>
-                <input
+                <label className="block text-body font-semibold mb-1.5 ml-1">
+                  Latitude (Optional)
+                </label>
+                <Input
                   type="number"
                   step="any"
                   placeholder="e.g. 26.4312"
                   value={latitude}
                   onChange={(e) => setLatitude(e.target.value)}
-                  className="w-full rounded-lg bg-slate-950 border border-slate-700/80 px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 font-mono text-xs"
+                  className="font-mono"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-medium mb-1">Longitude (Optional)</label>
-                <input
+                <label className="block text-body font-semibold mb-1.5 ml-1">
+                  Longitude (Optional)
+                </label>
+                <Input
                   type="number"
                   step="any"
                   placeholder="e.g. 80.3995"
                   value={longitude}
                   onChange={(e) => setLongitude(e.target.value)}
-                  className="w-full rounded-lg bg-slate-950 border border-slate-700/80 px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 font-mono text-xs"
+                  className="font-mono"
                 />
               </div>
 
               <div className="sm:col-span-2">
-                <label className="block text-slate-300 font-medium mb-1">
-                  Collection Date &amp; Time
+                <label className="block text-body font-semibold mb-1.5 ml-1">
+                  Collection Date &amp; Time <span className="text-status-critical">*</span>
                 </label>
-                <input
+                <Input
                   type="datetime-local"
                   required
                   value={collectionDate}
                   onChange={(e) => setCollectionDate(e.target.value)}
-                  className="w-full rounded-lg bg-slate-950 border border-slate-700/80 px-3 py-2 text-white focus:outline-none focus:border-teal-500 text-xs"
                 />
               </div>
             </CardContent>
           </Card>
 
           {/* Measured Analytes Rows */}
-          <Card className="border-slate-800 bg-slate-900/80">
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-base font-semibold text-white">
-                  Heavy Metal Concentrations
-                </CardTitle>
+                <CardTitle>Heavy Metal Concentrations</CardTitle>
                 <CardDescription>
                   Enter measured chemical values and detection limit qualifiers
                 </CardDescription>
               </div>
               <Button
                 type="button"
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 onClick={handleAddRow}
                 leftIcon={<Plus className="w-3.5 h-3.5" />}
@@ -454,7 +480,7 @@ GW-PAT-01,Danapur Peri-Urban Handpump,Patna,25.6322,85.0441,2026-03-17T09:00:00Z
               {rows.map((row, idx) => (
                 <div
                   key={idx}
-                  className="flex flex-wrap sm:flex-nowrap items-center gap-2 p-2 bg-slate-950/60 rounded-lg border border-slate-800 text-xs"
+                  className="flex flex-wrap sm:flex-nowrap items-center gap-2 p-2 bg-raised rounded-full border border-inset text-xs"
                 >
                   <select
                     value={row.symbol}
@@ -463,7 +489,7 @@ GW-PAT-01,Danapur Peri-Urban Handpump,Patna,25.6322,85.0441,2026-03-17T09:00:00Z
                       updated[idx].symbol = e.target.value as MetalSymbol;
                       setRows(updated);
                     }}
-                    className="w-32 rounded bg-slate-900 border border-slate-700 px-2 py-1.5 text-white font-mono"
+                    className="w-32 rounded-full bg-card border border-inset px-3 py-1.5 text-title font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-forest-500 cursor-pointer"
                   >
                     {Object.entries(CANONICAL_METALS).map(([sym, def]) => (
                       <option key={sym} value={sym}>
@@ -479,7 +505,7 @@ GW-PAT-01,Danapur Peri-Urban Handpump,Patna,25.6322,85.0441,2026-03-17T09:00:00Z
                       updated[idx].qualifier = e.target.value as MeasurementQualifier;
                       setRows(updated);
                     }}
-                    className="w-20 rounded bg-slate-900 border border-slate-700 px-2 py-1.5 text-white font-mono"
+                    className="w-24 rounded-full bg-card border border-inset px-3 py-1.5 text-title font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-forest-500 cursor-pointer"
                   >
                     <option value="=">=</option>
                     <option value="<">&lt; (LOD)</option>
@@ -498,7 +524,7 @@ GW-PAT-01,Danapur Peri-Urban Handpump,Patna,25.6322,85.0441,2026-03-17T09:00:00Z
                       updated[idx].value = e.target.value;
                       setRows(updated);
                     }}
-                    className="flex-1 rounded bg-slate-900 border border-slate-700 px-2 py-1.5 text-white font-mono"
+                    className="flex-1 rounded-full bg-card border border-inset px-3 py-1.5 text-title font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-forest-500 placeholder-placeholder"
                   />
 
                   <select
@@ -508,7 +534,7 @@ GW-PAT-01,Danapur Peri-Urban Handpump,Patna,25.6322,85.0441,2026-03-17T09:00:00Z
                       updated[idx].unit = e.target.value as ConcentrationUnit;
                       setRows(updated);
                     }}
-                    className="w-24 rounded bg-slate-900 border border-slate-700 px-2 py-1.5 text-white font-mono"
+                    className="w-28 rounded-full bg-card border border-inset px-3 py-1.5 text-title font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-forest-500 cursor-pointer"
                   >
                     <option value="mg/L">mg/L (ppm)</option>
                     <option value="ug/L">&micro;g/L (ppb)</option>
@@ -518,7 +544,7 @@ GW-PAT-01,Danapur Peri-Urban Handpump,Patna,25.6322,85.0441,2026-03-17T09:00:00Z
                     <button
                       type="button"
                       onClick={() => handleRemoveRow(idx)}
-                      className="p-1 text-slate-500 hover:text-rose-400"
+                      className="p-1.5 text-body hover:text-status-critical rounded-full hover:bg-inset transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -544,35 +570,26 @@ GW-PAT-01,Danapur Peri-Urban Handpump,Patna,25.6322,85.0441,2026-03-17T09:00:00Z
       {/* Mode 2: 3-Step CSV Ingestion Workflow */}
       {entryMode === 'csv' && (
         <div className="space-y-6">
-          <Card className="border-slate-800 bg-slate-900/80 p-6 space-y-5">
+          <Card className="p-6 space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <FileSpreadsheet className="w-5 h-5 text-teal-400" />
+                <h3 className="text-base font-bold text-title flex items-center gap-2">
+                  <FileSpreadsheet className="w-5 h-5 text-forest-700" />
                   <span>Step 1: Choose or Drop CSV Report</span>
                 </h3>
-                <p className="text-xs text-slate-400 mt-1">
-                  Upload an environmental laboratory report matrix or load the verified example test dataset.
+                <p className="text-xs text-body mt-1">
+                  Upload an environmental laboratory report matrix to compute multi-sample indices.
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
                 <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDownloadTemplate}
-                  leftIcon={<Download className="w-3.5 h-3.5 text-teal-400" />}
-                >
-                  Template CSV
-                </Button>
-                <Button
                   variant="secondary"
                   size="sm"
-                  onClick={handleLoadExampleCsv}
-                  disabled={previewCsvMutation.isPending}
-                  leftIcon={<Sparkles className="w-3.5 h-3.5 text-amber-400" />}
+                  onClick={handleDownloadTemplate}
+                  leftIcon={<Download className="w-3.5 h-3.5" />}
                 >
-                  Load Example CSV
+                  Download template
                 </Button>
               </div>
             </div>
@@ -585,31 +602,49 @@ GW-PAT-01,Danapur Peri-Urban Handpump,Patna,25.6322,85.0441,2026-03-17T09:00:00Z
               onChange={handleFileChange}
             />
 
+            {/* Redesigned Dropzone */}
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-slate-700 hover:border-teal-500/80 rounded-xl p-6 cursor-pointer bg-slate-950/40 text-center transition-colors"
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDraggingCsv(true);
+              }}
+              onDragLeave={() => setIsDraggingCsv(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDraggingCsv(false);
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                  handleProcessCsvFile(e.dataTransfer.files[0]);
+                }
+              }}
+              className={cn(
+                'bg-raised border-2 border-dashed rounded-[28px] p-8 cursor-pointer text-center transition-all',
+                isDraggingCsv
+                  ? 'border-forest-900 bg-inset'
+                  : 'border-accent hover:bg-inset'
+              )}
             >
-              <Upload className="w-8 h-8 text-slate-500 mx-auto mb-2" />
-              <p className="text-xs font-medium text-slate-300">
+              <Upload className="w-8 h-8 text-forest-900 mx-auto mb-2" />
+              <p className="text-sm font-bold text-title">
                 Click to browse or drag and drop laboratory CSV here
               </p>
-              <p className="text-[11px] text-slate-500 mt-1">RFC 4180 format • Up to 10 MB</p>
+              <p className="text-xs text-body mt-1">RFC 4180 format • Up to 10 MB</p>
             </div>
           </Card>
 
           {/* Step 2 & 3: Preview and Confirmation Table */}
           {previewCsvMutation.isPending ? (
-            <Card className="border-slate-800 bg-slate-900/60 p-8 text-center text-slate-400">
-              <Loader2 className="w-6 h-6 animate-spin text-teal-400 mx-auto mb-2" />
+            <Card className="p-8 text-center text-body">
+              <Loader2 className="w-6 h-6 animate-spin text-forest-700 mx-auto mb-2" />
               <p className="text-xs">Parsing matrix rows and validating concentrations...</p>
             </Card>
           ) : csvPreviewData ? (
-            <Card className="border-slate-800 bg-slate-900/80 space-y-4">
-              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-800 pb-4">
+            <Card className="space-y-4">
+              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-inset pb-4">
                 <div>
-                  <CardTitle className="text-base font-bold text-white flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2">
                     <span>Step 2: Review Parsed Samples ({csvPreviewData.fileName})</span>
-                    <Badge variant="outline" className="text-xs text-teal-400 border-teal-500/30">
+                    <Badge variant="safe" size="sm">
                       {csvPreviewData.validCount} Valid Samples
                     </Badge>
                   </CardTitle>
@@ -639,8 +674,8 @@ GW-PAT-01,Danapur Peri-Urban Handpump,Patna,25.6322,85.0441,2026-03-17T09:00:00Z
 
               <CardContent className="p-0">
                 {csvPreviewData.errors.length > 0 && (
-                  <div className="p-4 bg-rose-950/20 border-b border-rose-900/40 text-xs text-rose-300 space-y-1">
-                    <div className="font-semibold text-rose-400">
+                  <div className="p-4 bg-status-critical-bg border-b border-status-critical/30 text-xs text-status-critical space-y-1">
+                    <div className="font-semibold">
                       {csvPreviewData.errors.length} Row Validation Warning(s):
                     </div>
                     {csvPreviewData.errors.map((err, i) => (
@@ -651,47 +686,48 @@ GW-PAT-01,Danapur Peri-Urban Handpump,Patna,25.6322,85.0441,2026-03-17T09:00:00Z
                   </div>
                 )}
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-950/70 text-slate-400 border-b border-slate-800 uppercase tracking-wider text-[11px]">
-                      <tr>
-                        <th className="py-3 px-4 font-semibold">Sample Code</th>
-                        <th className="py-3 px-4 font-semibold">Location</th>
-                        <th className="py-3 px-4 font-semibold">Coordinates</th>
-                        <th className="py-3 px-4 font-semibold">Matrix</th>
-                        <th className="py-3 px-4 font-semibold">Analytes Detected</th>
-                        <th className="py-3 px-4 font-semibold text-right">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/80">
-                      {csvPreviewData.samples.map((s, idx) => (
-                        <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
-                          <td className="py-3 px-4 font-mono font-medium text-white">{s.sampleCode}</td>
-                          <td className="py-3 px-4 text-slate-300">
-                            <div>{s.location?.name}</div>
-                            <div className="text-[11px] text-slate-500">{s.location?.district}</div>
-                          </td>
-                          <td className="py-3 px-4 font-mono text-[11px] text-slate-400">
-                            {s.location?.coordinates
-                              ? `${s.location.coordinates.latitude.toFixed(3)}, ${s.location.coordinates.longitude.toFixed(3)}`
-                              : 'No GPS'}
-                          </td>
-                          <td className="py-3 px-4 capitalize text-slate-300">
-                            {s.sampleMatrix?.replace('_', ' ')}
-                          </td>
-                          <td className="py-3 px-4 font-mono text-teal-400">
-                            {s.measurements?.length || 0} metals ({s.measurements?.map((m: any) => m.symbol).join(', ')})
-                          </td>
-                          <td className="py-3 px-4 text-right">
-                            <Badge variant="safe" size="sm">
-                              Valid
-                            </Badge>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <Table>
+                  <TableHeader>
+                    <tr>
+                      <TableHead>Sample Code</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Coordinates</TableHead>
+                      <TableHead>Matrix</TableHead>
+                      <TableHead>Analytes Detected</TableHead>
+                      <TableHead className="text-right">Status</TableHead>
+                    </tr>
+                  </TableHeader>
+                  <TableBody>
+                    {csvPreviewData.samples.map((s, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell className="font-mono font-bold text-forest-900">
+                          {s.sampleCode}
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-semibold">{s.location?.name}</div>
+                          <div className="text-[11px] text-body">{s.location?.district}</div>
+                        </TableCell>
+                        <TableCell className="font-mono text-[11px] text-body">
+                          {s.location?.coordinates
+                            ? `${s.location.coordinates.latitude.toFixed(3)}, ${s.location.coordinates.longitude.toFixed(3)}`
+                            : 'No GPS'}
+                        </TableCell>
+                        <TableCell className="capitalize">
+                          {s.sampleMatrix?.replace('_', ' ')}
+                        </TableCell>
+                        <TableCell className="font-mono text-forest-700 font-semibold">
+                          {s.measurements?.length || 0} metals (
+                          {s.measurements?.map((m: any) => m.symbol).join(', ')})
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant="safe" size="sm">
+                            Valid
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           ) : null}
@@ -700,12 +736,17 @@ GW-PAT-01,Danapur Peri-Urban Handpump,Patna,25.6322,85.0441,2026-03-17T09:00:00Z
 
       {/* Mode 3: Lab Report OCR */}
       {entryMode === 'document' && (
-        <Card className="border-slate-800 bg-slate-900/80 p-8 text-center space-y-5">
-          <FileSearch className="w-12 h-12 text-teal-400 mx-auto" />
+        <Card className="p-8 text-center space-y-5">
+          <div className="w-14 h-14 rounded-full bg-forest-900 flex items-center justify-center text-page mx-auto shadow-sm">
+            <FileSearch className="w-7 h-7 text-page" />
+          </div>
           <div>
-            <h3 className="text-lg font-bold text-white">Upload Lab Certificate (PDF / Scanned Image)</h3>
-            <p className="text-xs text-slate-400 max-w-md mx-auto mt-1">
-              Supported formats: PDF, PNG, JPEG, WebP. Multimodal OCR proposes candidate values with page references for mandatory human verification.
+            <h3 className="text-lg font-bold text-title">
+              Upload Lab Certificate (PDF / Scanned Image)
+            </h3>
+            <p className="text-xs text-body max-w-md mx-auto mt-1">
+              Supported formats: PDF, PNG, JPEG, WebP. Multimodal OCR proposes candidate values
+              with page references for mandatory human verification.
             </p>
           </div>
 
@@ -721,23 +762,45 @@ GW-PAT-01,Danapur Peri-Urban Handpump,Patna,25.6322,85.0441,2026-03-17T09:00:00Z
             }}
           />
 
+          {/* Redesigned Dropzone */}
           <div
             onClick={() => docInputRef.current?.click()}
-            className="border-2 border-dashed border-slate-700 hover:border-teal-500/80 rounded-xl p-8 cursor-pointer bg-slate-950/40 transition-colors"
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDraggingDoc(true);
+            }}
+            onDragLeave={() => setIsDraggingDoc(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsDraggingDoc(false);
+              if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                setDocFile(e.dataTransfer.files[0]);
+              }
+            }}
+            className={cn(
+              'bg-raised border-2 border-dashed rounded-[28px] p-8 cursor-pointer text-center transition-all',
+              isDraggingDoc
+                ? 'border-forest-900 bg-inset'
+                : 'border-accent hover:bg-inset'
+            )}
           >
             {docFile ? (
               <div className="space-y-1">
-                <CheckCircle2 className="w-6 h-6 text-emerald-400 mx-auto" />
-                <div className="text-xs font-bold text-white font-mono">{docFile.name}</div>
-                <div className="text-[11px] text-slate-400">
-                  {(docFile.size / 1024).toFixed(1)} KB • Click to choose different file
+                <CheckCircle2 className="w-6 h-6 text-status-safe mx-auto" />
+                <div className="text-xs font-bold text-title font-mono">{docFile.name}</div>
+                <div className="text-[11px] text-body">
+                  {(docFile.size / 1024).toFixed(1)} KB • Click or drop to choose different file
                 </div>
               </div>
             ) : (
               <div>
-                <Upload className="w-6 h-6 text-slate-500 mx-auto mb-2" />
-                <p className="text-xs text-slate-300">Click to browse or drag and drop PDF/image report here</p>
-                <p className="text-[11px] text-slate-500 mt-1">Max 10 MB • Scanned and multi-page certificates</p>
+                <Upload className="w-8 h-8 text-forest-900 mx-auto mb-2" />
+                <p className="text-sm font-bold text-title">
+                  Click to browse or drag and drop PDF/image report here
+                </p>
+                <p className="text-xs text-body mt-1">
+                  Max 10 MB • Scanned and multi-page certificates
+                </p>
               </div>
             )}
           </div>
@@ -756,7 +819,9 @@ GW-PAT-01,Danapur Peri-Urban Handpump,Patna,25.6322,85.0441,2026-03-17T09:00:00Z
                   )
                 }
               >
-                {uploadDocMutation.isPending ? 'Extracting Candidate Values...' : 'Extract Candidate Values'}
+                {uploadDocMutation.isPending
+                  ? 'Extracting Candidate Values...'
+                  : 'Extract Candidate Values'}
               </Button>
             </div>
           )}

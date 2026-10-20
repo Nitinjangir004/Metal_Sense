@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import {
-  Settings,
-  Shield,
   User,
   Scale,
   KeyRound,
@@ -17,6 +15,9 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../..
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Alert } from '../../components/ui/Alert';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
 
 export function SettingsPage() {
   const { user, activeWorkspace, userRole, updateActiveWorkspace, logout } = useAuth();
@@ -100,53 +101,19 @@ export function SettingsPage() {
           defaultLodStrategy: lodStrategy,
         }),
       });
-      const data = await res.json();
+
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to update workspace settings.');
+        const errorJson = await res.json().catch(() => ({}));
+        throw new Error(errorJson.error || 'Failed to update workspace settings.');
       }
-      updateActiveWorkspace(data.data);
-      setWsSuccess('Workspace settings saved successfully.');
+
+      const updated = await res.json();
+      updateActiveWorkspace(updated.data);
+      setWsSuccess('Workspace settings successfully updated.');
     } catch (err: any) {
       setWsError(err.message || 'Error updating workspace.');
     } finally {
       setWsSaving(false);
-    }
-  };
-
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPwdSuccess(null);
-    setPwdError(null);
-
-    if (newPassword.length < 10) {
-      setPwdError('New password must be at least 10 characters.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setPwdError('New passwords do not match.');
-      return;
-    }
-
-    setPwdLoading(true);
-    try {
-      const res = await fetch('/api/v1/auth/change-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to update password.');
-      }
-      setPwdSuccess('Password changed successfully.');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (err: any) {
-      setPwdError(err.message || 'Error updating password.');
-    } finally {
-      setPwdLoading(false);
     }
   };
 
@@ -163,21 +130,23 @@ export function SettingsPage() {
         credentials: 'include',
         body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole }),
       });
-      const data = await res.json();
+
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to invite member.');
+        const errorJson = await res.json().catch(() => ({}));
+        throw new Error(errorJson.error || 'Failed to add member to workspace.');
       }
+
       setInviteEmail('');
       await fetchMembers();
     } catch (err: any) {
-      setInviteError(err.message || 'Failed to invite member.');
+      setInviteError(err.message || 'Error inviting member.');
     } finally {
       setInviteLoading(false);
     }
   };
 
   const handleRemoveMember = async (userId: string) => {
-    if (!activeWorkspace || !confirm('Remove this member from the workspace?')) return;
+    if (!activeWorkspace || !confirm('Are you sure you want to remove this member?')) return;
     try {
       const res = await fetch(`/api/v1/workspaces/${activeWorkspace.id}/members/${userId}`, {
         method: 'DELETE',
@@ -187,13 +156,52 @@ export function SettingsPage() {
         await fetchMembers();
       }
     } catch {
-      // silently fallback
+      alert('Failed to remove member.');
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwdSuccess(null);
+    setPwdError(null);
+
+    if (newPassword.length < 10) {
+      setPwdError('New password must be at least 10 characters long.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPwdError('New passwords do not match.');
+      return;
+    }
+
+    setPwdLoading(true);
+    try {
+      const res = await fetch('/api/v1/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+
+      if (!res.ok) {
+        const errorJson = await res.json().catch(() => ({}));
+        throw new Error(errorJson.error || 'Failed to change password.');
+      }
+
+      setPwdSuccess('Your password has been securely updated.');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      setPwdError(err.message || 'Error changing password.');
+    } finally {
+      setPwdLoading(false);
     }
   };
 
   const handleDeleteAccount = async () => {
     const confirmation = prompt(
-      'Are you sure you want to delete your account? This will permanently remove all your workspaces, samples, and analyses. Type DELETE to confirm:'
+      'WARNING: This action is permanent and will delete all your workspaces, samples, and calculation dossiers.\nType "DELETE" to confirm:'
     );
     if (confirmation !== 'DELETE') return;
 
@@ -206,101 +214,98 @@ export function SettingsPage() {
         await logout();
         window.location.href = '/';
       }
-    } catch (err) {
+    } catch {
       alert('Failed to delete account. Please try again.');
     }
   };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-white">Platform Settings</h1>
-        <p className="text-sm text-slate-400 mt-1">
-          Manage your account profile, workspace calculation defaults, team members, and security.
-        </p>
-      </div>
+      <PageHeader
+        title="Platform Settings"
+        workspaceName={activeWorkspace?.name}
+        description="Manage your account profile, workspace calculation defaults, team members, and security."
+      />
 
       {/* User Profile Card */}
-      <Card className="border-slate-800 bg-slate-900/80">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-base font-bold text-white flex items-center gap-2">
-            <User className="w-4 h-4 text-teal-400" />
+          <CardTitle className="flex items-center gap-2">
+            <User className="w-4 h-4 text-forest-700" />
             <span>User Account Profile</span>
           </CardTitle>
           <CardDescription>Your registered identity and active credentials.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-xs sm:text-sm">
-          <div className="flex items-center gap-4 p-4 rounded-xl bg-slate-950/60 border border-slate-800">
+          <div className="flex items-center gap-4 p-4 rounded-[20px] bg-raised border border-inset">
             <img
               src={
                 user?.avatarUrl ||
                 `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=002F18&color=ECF5EB`
               }
               alt={user?.name || 'User'}
-              className="w-14 h-14 rounded-full border border-teal-500/30 object-cover"
+              className="w-14 h-14 rounded-full border border-forest-500/30 object-cover"
             />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-white text-base truncate">{user?.name}</span>
-                <Badge variant="outline" className="text-xs uppercase text-teal-400 border-teal-500/30">
+                <span className="font-bold text-title text-base truncate">{user?.name}</span>
+                <Badge variant="safe" size="sm">
                   {userRole}
                 </Badge>
               </div>
-              <p className="text-slate-400 text-xs truncate mt-0.5">{user?.email}</p>
-              <p className="text-slate-500 text-[11px] mt-1 font-mono">User ID: {user?.id}</p>
+              <p className="text-body text-xs truncate mt-0.5">{user?.email}</p>
+              <p className="text-caption text-[11px] mt-1 font-mono">User ID: {user?.id}</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Workspace & Scientific Calculation Preferences */}
-      <Card className="border-slate-800 bg-slate-900/80">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-base font-bold text-white flex items-center gap-2">
-            <Scale className="w-4 h-4 text-teal-400" />
+          <CardTitle className="flex items-center gap-2">
+            <Scale className="w-4 h-4 text-forest-700" />
             <span>Workspace &amp; Scientific Calculation Defaults</span>
           </CardTitle>
           <CardDescription>
             Configure the baseline regulatory standard and detection limit substitution logic for{' '}
-            <strong className="text-slate-200">{activeWorkspace?.name || 'this workspace'}</strong>.
+            <strong className="text-title">{activeWorkspace?.name || 'this workspace'}</strong>.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSaveWorkspaceSettings} className="space-y-4 text-xs sm:text-sm">
             {wsSuccess && (
               <Alert variant="info" className="flex items-center gap-2 text-xs">
-                <Check className="w-4 h-4 text-teal-400" />
+                <Check className="w-4 h-4 text-status-safe" />
                 <span>{wsSuccess}</span>
               </Alert>
             )}
             {wsError && (
               <Alert variant="danger" className="flex items-center gap-2 text-xs">
-                <AlertCircle className="w-4 h-4 text-rose-400" />
+                <AlertCircle className="w-4 h-4 text-status-critical" />
                 <span>{wsError}</span>
               </Alert>
             )}
 
             <div>
-              <label className="block text-slate-300 font-medium mb-1">Workspace Name</label>
-              <input
+              <label className="block text-body font-semibold mb-1.5 ml-1">Workspace Name</label>
+              <Input
                 type="text"
                 value={wsName}
                 onChange={(e) => setWsName(e.target.value)}
                 disabled={userRole !== 'owner'}
                 required
-                className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:border-teal-500 text-xs disabled:opacity-50"
               />
             </div>
 
             <div>
-              <label className="block text-slate-300 font-medium mb-1">
+              <label className="block text-body font-semibold mb-1.5 ml-1">
                 Default Regulatory Standard
               </label>
-              <select
+              <Select
                 value={defaultStandard}
                 onChange={(e) => setDefaultStandard(e.target.value)}
                 disabled={userRole !== 'owner'}
-                className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:border-teal-500 text-xs disabled:opacity-50"
               >
                 <option value="BIS_10500_2012">
                   Bureau of Indian Standards (BIS IS 10500:2012 Drinking Water Specification)
@@ -308,25 +313,24 @@ export function SettingsPage() {
                 <option value="WHO_GDWQ_4TH">
                   World Health Organization (WHO Guidelines for Drinking-water Quality 4th Ed)
                 </option>
-              </select>
+              </Select>
             </div>
 
             <div>
-              <label className="block text-slate-300 font-medium mb-1">
+              <label className="block text-body font-semibold mb-1.5 ml-1">
                 Limit of Detection (&lt;LOD) Substitution Strategy
               </label>
-              <select
+              <Select
                 value={lodStrategy}
                 onChange={(e) => setLodStrategy(e.target.value as any)}
                 disabled={userRole !== 'owner'}
-                className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:border-teal-500 text-xs disabled:opacity-50"
               >
                 <option value="half_lod">
                   Half LOD (0.5 × LOD) — US EPA Standard Environmental Convention
                 </option>
                 <option value="zero">Zero (0) — Optimistic lower bound</option>
                 <option value="full_lod">Full LOD (1.0 × LOD) — Conservative upper bound</option>
-              </select>
+              </Select>
             </div>
 
             {userRole === 'owner' && (
@@ -341,10 +345,10 @@ export function SettingsPage() {
       </Card>
 
       {/* Workspace Members */}
-      <Card className="border-slate-800 bg-slate-900/80">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-base font-bold text-white flex items-center gap-2">
-            <Users className="w-4 h-4 text-teal-400" />
+          <CardTitle className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-forest-700" />
             <span>Workspace Collaborators</span>
           </CardTitle>
           <CardDescription>
@@ -355,24 +359,26 @@ export function SettingsPage() {
           {userRole === 'owner' && (
             <form
               onSubmit={handleInviteMember}
-              className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-3 rounded-lg bg-slate-950/60 border border-slate-800"
+              className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-3 rounded-[20px] bg-raised border border-inset"
             >
-              <input
-                type="email"
-                placeholder="colleague@laboratory.org"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                required
-                className="flex-1 rounded-md bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-teal-500"
-              />
-              <select
-                value={inviteRole}
-                onChange={(e) => setInviteRole(e.target.value as any)}
-                className="rounded-md bg-slate-900 border border-slate-700 px-3 py-1.5 text-xs text-white focus:outline-none focus:border-teal-500"
-              >
-                <option value="viewer">Viewer (Read only)</option>
-                <option value="editor">Editor (Upload &amp; Analyze)</option>
-              </select>
+              <div className="flex-1">
+                <Input
+                  type="email"
+                  placeholder="colleague@laboratory.org"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="w-full sm:w-48">
+                <Select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value as any)}
+                >
+                  <option value="viewer">Viewer (Read only)</option>
+                  <option value="editor">Editor (Upload &amp; Analyze)</option>
+                </Select>
+              </div>
               <Button
                 type="submit"
                 variant="secondary"
@@ -393,39 +399,40 @@ export function SettingsPage() {
           )}
 
           {membersLoading ? (
-            <div className="flex items-center justify-center py-4 text-slate-500 gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-teal-500" />
+            <div className="flex items-center justify-center py-4 text-body gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-forest-700" />
               <span>Loading workspace members...</span>
             </div>
           ) : (
-            <div className="divide-y divide-slate-800 border border-slate-800 rounded-lg overflow-hidden">
+            <div className="divide-y divide-inset border border-inset rounded-[20px] overflow-hidden bg-card">
               {members.length === 0 ? (
-                <div className="p-4 text-center text-slate-500 text-xs">
+                <div className="p-4 text-center text-body text-xs">
                   No other members in this workspace yet.
                 </div>
               ) : (
                 members.map((m) => (
                   <div
                     key={m.userId}
-                    className="flex items-center justify-between p-3 bg-slate-950/40 hover:bg-slate-950/70 transition-colors"
+                    className="flex items-center justify-between p-3.5 hover:bg-raised transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-teal-900/40 text-teal-300 font-semibold flex items-center justify-center text-xs">
+                      <div className="w-8 h-8 rounded-full bg-forest-900 text-page font-bold flex items-center justify-center text-xs">
                         {m.name.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <div className="font-medium text-white text-xs">{m.name}</div>
-                        <div className="text-[11px] text-slate-400">{m.email}</div>
+                        <div className="font-bold text-title text-xs">{m.name}</div>
+                        <div className="text-[11px] text-body">{m.email}</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Badge variant="outline" className="text-[10px] uppercase text-slate-300">
+                      <Badge variant="safe" size="sm">
                         {m.role}
                       </Badge>
                       {userRole === 'owner' && m.userId !== user?.id && (
                         <button
+                          type="button"
                           onClick={() => handleRemoveMember(m.userId)}
-                          className="text-slate-500 hover:text-rose-400 p-1 transition-colors"
+                          className="p-1.5 text-body hover:text-status-critical rounded-full hover:bg-inset transition-colors cursor-pointer"
                           title="Remove member"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -441,10 +448,10 @@ export function SettingsPage() {
       </Card>
 
       {/* Security & Password Update */}
-      <Card className="border-slate-800 bg-slate-900/80">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-base font-bold text-white flex items-center gap-2">
-            <KeyRound className="w-4 h-4 text-teal-400" />
+          <CardTitle className="flex items-center gap-2">
+            <KeyRound className="w-4 h-4 text-forest-700" />
             <span>Security &amp; Password</span>
           </CardTitle>
           <CardDescription>
@@ -455,49 +462,46 @@ export function SettingsPage() {
           <form onSubmit={handleChangePassword} className="space-y-4 text-xs sm:text-sm">
             {pwdSuccess && (
               <Alert variant="info" className="flex items-center gap-2 text-xs">
-                <Check className="w-4 h-4 text-teal-400" />
+                <Check className="w-4 h-4 text-status-safe" />
                 <span>{pwdSuccess}</span>
               </Alert>
             )}
             {pwdError && (
               <Alert variant="danger" className="flex items-center gap-2 text-xs">
-                <AlertCircle className="w-4 h-4 text-rose-400" />
+                <AlertCircle className="w-4 h-4 text-status-critical" />
                 <span>{pwdError}</span>
               </Alert>
             )}
 
             <div>
-              <label className="block text-slate-300 font-medium mb-1">Current Password</label>
-              <input
+              <label className="block text-body font-semibold mb-1.5 ml-1">Current Password</label>
+              <Input
                 type="password"
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 required
-                className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:border-teal-500 text-xs"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-slate-300 font-medium mb-1">New Password</label>
-                <input
+                <label className="block text-body font-semibold mb-1.5 ml-1">New Password</label>
+                <Input
                   type="password"
                   placeholder="At least 10 characters"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
-                  className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:border-teal-500 text-xs"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-medium mb-1">Confirm New Password</label>
-                <input
+                <label className="block text-body font-semibold mb-1.5 ml-1">Confirm New Password</label>
+                <Input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white focus:outline-none focus:border-teal-500 text-xs"
                 />
               </div>
             </div>
@@ -512,18 +516,18 @@ export function SettingsPage() {
       </Card>
 
       {/* Danger Zone */}
-      <Card className="border-rose-900/40 bg-rose-950/10">
+      <Card className="border-status-critical/30 bg-status-critical-bg/20">
         <CardHeader>
-          <CardTitle className="text-base font-bold text-rose-400 flex items-center gap-2">
+          <CardTitle className="text-base font-bold text-status-critical-text flex items-center gap-2">
             <Trash2 className="w-4 h-4" />
             <span>Danger Zone</span>
           </CardTitle>
-          <CardDescription className="text-rose-300/70">
+          <CardDescription className="text-body">
             Permanently delete your account, personal workspaces, and all sample data.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-xs text-slate-400 mb-4">
+          <p className="text-xs text-body mb-4">
             Once you delete your account, there is no going back. All measurements, calculation
             histories, and generated audit dossiers will be permanently removed.
           </p>
@@ -532,7 +536,6 @@ export function SettingsPage() {
             variant="danger"
             size="sm"
             onClick={handleDeleteAccount}
-            className="text-xs"
           >
             Delete Account Permanently
           </Button>

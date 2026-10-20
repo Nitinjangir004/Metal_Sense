@@ -12,7 +12,7 @@ export function ProvenanceBadge({ provenance, className }: ProvenanceBadgeProps)
   if (provenance.isDemo) {
     return (
       <Badge variant="cyan" className={className} title="Simulated laboratory reference dataset">
-        <Database className="w-3 h-3 text-cyan-400 shrink-0" />
+        <Database className="w-3 h-3 text-forest-700 shrink-0" />
         <span>DEMO / BENCHMARK DATA</span>
       </Badge>
     );
@@ -22,7 +22,7 @@ export function ProvenanceBadge({ provenance, className }: ProvenanceBadgeProps)
     case 'csv_import':
       return (
         <Badge variant="default" className={className} title={provenance.originalFileName}>
-          <FileSpreadsheet className="w-3 h-3 text-slate-300 shrink-0" />
+          <FileSpreadsheet className="w-3 h-3 text-forest-600 shrink-0" />
           <span>CSV Import</span>
         </Badge>
       );
@@ -41,7 +41,7 @@ export function ProvenanceBadge({ provenance, className }: ProvenanceBadgeProps)
     default:
       return (
         <Badge variant="outline" className={className}>
-          <Eye className="w-3 h-3 text-slate-400 shrink-0" />
+          <Eye className="w-3 h-3 text-caption shrink-0" />
           <span>Manual Entry</span>
         </Badge>
       );

@@ -2,20 +2,10 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
-  Calendar,
-  MapPin,
-  Building2,
-  FileCheck2,
-  Scale,
-  Calculator,
   Download,
   AlertTriangle,
-  CheckCircle2,
-  ShieldAlert,
-  Info,
   RefreshCw,
   Loader2,
-  ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { useSample, useRecalculateSample, useStandards } from '../../lib/api';
@@ -24,7 +14,15 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../..
 import { Badge } from '../../components/ui/Badge';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { ProvenanceBadge } from '../../components/ui/ProvenanceBadge';
-import { Alert } from '../../components/ui/Alert';
+import { PageHeader } from '../../components/ui/PageHeader';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '../../components/ui/Table';
 import { LODHandlingStrategy } from '@metalsense/shared';
 
 export function SampleDetailPage() {
@@ -40,11 +38,11 @@ export function SampleDetailPage() {
   if (isLoading) {
     return (
       <div className="space-y-6 animate-pulse">
-        <div className="h-8 bg-slate-800 rounded w-1/3"></div>
-        <div className="h-28 bg-slate-900 rounded-2xl border border-slate-800"></div>
+        <div className="h-8 bg-inset rounded-full w-1/3"></div>
+        <div className="h-28 bg-card rounded-[28px] border border-inset"></div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-32 bg-slate-900 rounded-2xl border border-slate-800"></div>
+            <div key={i} className="h-32 bg-card rounded-[28px] border border-inset"></div>
           ))}
         </div>
       </div>
@@ -53,10 +51,10 @@ export function SampleDetailPage() {
 
   if (isError || !data?.sample) {
     return (
-      <div className="p-8 text-center bg-slate-900/60 rounded-2xl border border-rose-900/40 space-y-4">
-        <AlertTriangle className="w-10 h-10 text-rose-400 mx-auto" />
-        <h2 className="text-lg font-bold text-white">Sample Not Found</h2>
-        <p className="text-sm text-slate-400">
+      <div className="p-8 text-center bg-card rounded-[28px] border border-status-critical/30 space-y-4">
+        <AlertTriangle className="w-10 h-10 text-status-critical mx-auto" />
+        <h2 className="text-lg font-bold text-title">Sample Not Found</h2>
+        <p className="text-sm text-body">
           {error instanceof Error ? error.message : 'The requested sample could not be found or has been removed.'}
         </p>
         <Link to="/app/samples">
@@ -68,7 +66,7 @@ export function SampleDetailPage() {
     );
   }
 
-  const { sample, analysis, history } = data;
+  const { sample, analysis } = data;
 
   const handleRecalculate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,66 +90,63 @@ export function SampleDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Top Header / Back Link */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Link to="/app/samples">
-            <Button variant="ghost" size="sm" leftIcon={<ArrowLeft className="w-4 h-4" />}>
-              All Samples
+      <PageHeader
+        title={sample.sampleCode}
+        workspaceName={activeWorkspace?.name}
+        description={`Tested ${new Date(sample.collectionDate).toLocaleDateString()} at ${sample.location.name}.`}
+        badge={<ProvenanceBadge provenance={sample.provenance} />}
+        actions={
+          <div className="flex items-center gap-2.5">
+            <Link to="/app/samples">
+              <Button variant="ghost" size="sm" leftIcon={<ArrowLeft className="w-4 h-4" />}>
+                All Samples
+              </Button>
+            </Link>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleDownloadPdf}
+              leftIcon={<Download className="w-4 h-4" />}
+            >
+              Download Audit PDF
             </Button>
-          </Link>
-          <div className="h-4 w-px bg-slate-800" />
-          <h1 className="text-xl sm:text-2xl font-bold font-mono text-white flex items-center gap-2">
-            <span>{sample.sampleCode}</span>
-            <ProvenanceBadge provenance={sample.provenance} />
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleDownloadPdf}
-            leftIcon={<Download className="w-4 h-4 text-teal-400" />}
-          >
-            Download Audit PDF
-          </Button>
-        </div>
-      </div>
+          </div>
+        }
+      />
 
       {/* Metadata Overview Card */}
-      <Card className="border-slate-800 bg-slate-900/60">
+      <Card>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
           <div>
-            <div className="text-slate-400 font-medium">Sampling Location</div>
-            <div className="font-semibold text-white mt-1">{sample.location.name}</div>
-            <div className="text-slate-500 mt-0.5">
+            <div className="text-caption font-semibold uppercase">Sampling Location</div>
+            <div className="font-bold text-title mt-1 text-sm">{sample.location.name}</div>
+            <div className="text-body mt-0.5">
               {sample.location.district || 'Unspecified'}
               {sample.location.coordinates && (
-                <span className="block text-[11px] font-mono text-teal-400">
+                <span className="block text-[11px] font-mono text-forest-700 font-semibold mt-0.5">
                   {sample.location.coordinates.latitude.toFixed(4)}, {sample.location.coordinates.longitude.toFixed(4)}
                 </span>
               )}
             </div>
           </div>
           <div>
-            <div className="text-slate-400 font-medium">Collection Date &amp; Matrix</div>
-            <div className="font-semibold text-white mt-1">
+            <div className="text-caption font-semibold uppercase">Collection Date &amp; Matrix</div>
+            <div className="font-bold text-title mt-1 text-sm">
               {new Date(sample.collectionDate).toLocaleString()}
             </div>
-            <div className="text-slate-500 mt-0.5 capitalize">{sample.sampleMatrix.replace('_', ' ')}</div>
+            <div className="text-body mt-0.5 capitalize">{sample.sampleMatrix.replace('_', ' ')}</div>
           </div>
           <div>
-            <div className="text-slate-400 font-medium">Testing Laboratory</div>
-            <div className="font-semibold text-white mt-1">{sample.laboratory?.name || 'In-house Lab'}</div>
-            <div className="text-slate-500 mt-0.5">Report: {sample.laboratory?.reportNumber || 'N/A'}</div>
+            <div className="text-caption font-semibold uppercase">Testing Laboratory</div>
+            <div className="font-bold text-title mt-1 text-sm">{sample.laboratory?.name || 'In-house Lab'}</div>
+            <div className="text-body mt-0.5">Report: {sample.laboratory?.reportNumber || 'N/A'}</div>
           </div>
           <div>
-            <div className="text-slate-400 font-medium">Active Standard</div>
-            <div className="font-semibold text-teal-400 mt-1">
+            <div className="text-caption font-semibold uppercase">Active Standard</div>
+            <div className="font-bold text-forest-700 mt-1 text-sm">
               {analysis?.standardUsed?.code || 'BIS_10500_2012'}
             </div>
-            <div className="text-slate-500 mt-0.5 capitalize">LOD: {analysis?.lodStrategy || 'half_lod'}</div>
+            <div className="text-body mt-0.5 capitalize">LOD Strategy: {analysis?.lodStrategy || 'half_lod'}</div>
           </div>
         </div>
       </Card>
@@ -159,41 +154,47 @@ export function SampleDetailPage() {
       {/* Calculated Pollution Indices Grid */}
       {analysis && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card className="border-slate-800 bg-slate-900/80">
+          <Card>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-mono uppercase text-slate-400">Heavy Metal Pollution Index (HPI)</span>
+              <span className="text-xs font-mono font-bold uppercase text-caption">
+                Heavy Metal Pollution Index (HPI)
+              </span>
               <StatusBadge status={analysis.hpi.classification} />
             </div>
-            <div className="mt-3 text-3xl font-extrabold text-white">
+            <div className="mt-3 text-3xl font-extrabold text-title">
               {analysis.hpi.value.toFixed(1)}
             </div>
-            <div className="mt-1 text-xs text-slate-400">
+            <div className="mt-1 text-xs text-body font-medium">
               Critical threshold: &ge; {analysis.hpi.thresholdValue}
             </div>
           </Card>
 
-          <Card className="border-slate-800 bg-slate-900/80">
+          <Card>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-mono uppercase text-slate-400">Heavy Metal Evaluation Index (HEI)</span>
+              <span className="text-xs font-mono font-bold uppercase text-caption">
+                Heavy Metal Evaluation Index (HEI)
+              </span>
               <StatusBadge status={analysis.hei.classification} />
             </div>
-            <div className="mt-3 text-3xl font-extrabold text-white">
+            <div className="mt-3 text-3xl font-extrabold text-title">
               {analysis.hei.value.toFixed(2)}
             </div>
-            <div className="mt-1 text-xs text-slate-400">
+            <div className="mt-1 text-xs text-body font-medium">
               Classification: {analysis.hei.classification} contamination
             </div>
           </Card>
 
-          <Card className="border-slate-800 bg-slate-900/80">
+          <Card>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-mono uppercase text-slate-400">Degree of Contamination (C<sub>d</sub>)</span>
+              <span className="text-xs font-mono font-bold uppercase text-caption">
+                Degree of Contamination (C<sub>d</sub>)
+              </span>
               <StatusBadge status={analysis.cd.classification} />
             </div>
-            <div className="mt-3 text-3xl font-extrabold text-white">
+            <div className="mt-3 text-3xl font-extrabold text-title">
               {analysis.cd.value.toFixed(2)}
             </div>
-            <div className="mt-1 text-xs text-slate-400">
+            <div className="mt-1 text-xs text-body font-medium">
               Classification: {analysis.cd.classification} contamination
             </div>
           </Card>
@@ -201,14 +202,14 @@ export function SampleDetailPage() {
       )}
 
       {/* Recalculate Toolbar */}
-      <Card className="border-slate-800 bg-slate-900/60 p-4">
+      <Card className="p-4">
         <form onSubmit={handleRecalculate} className="flex flex-wrap items-center justify-between gap-4 text-xs">
-          <div className="flex flex-wrap items-center gap-4">
-            <span className="font-semibold text-slate-300">Re-evaluate with alternate standard:</span>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="font-bold text-title">Re-evaluate with alternate standard:</span>
             <select
               value={selectedStandard}
               onChange={(e) => setSelectedStandard(e.target.value)}
-              className="rounded-lg bg-slate-950 border border-slate-700 px-3 py-1.5 text-xs text-white focus:outline-none focus:border-teal-500"
+              className="rounded-full bg-raised border border-inset px-4 py-2 text-xs text-title font-semibold focus:outline-none focus:ring-2 focus:ring-forest-500 cursor-pointer shadow-sm"
             >
               {standards?.map((s) => (
                 <option key={s.code} value={s.code}>
@@ -225,7 +226,7 @@ export function SampleDetailPage() {
             <select
               value={selectedLod}
               onChange={(e) => setSelectedLod(e.target.value as any)}
-              className="rounded-lg bg-slate-950 border border-slate-700 px-3 py-1.5 text-xs text-white focus:outline-none focus:border-teal-500"
+              className="rounded-full bg-raised border border-inset px-4 py-2 text-xs text-title font-semibold focus:outline-none focus:ring-2 focus:ring-forest-500 cursor-pointer shadow-sm"
             >
               <option value="half_lod">Half LOD (0.5 × LOD)</option>
               <option value="zero">Zero (0)</option>
@@ -240,9 +241,9 @@ export function SampleDetailPage() {
             disabled={recalculateMutation.isPending}
             leftIcon={
               recalculateMutation.isPending ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-teal-400" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-forest-700" />
               ) : (
-                <RefreshCw className="w-3.5 h-3.5 text-teal-400" />
+                <RefreshCw className="w-3.5 h-3.5" />
               )
             }
           >
@@ -252,66 +253,64 @@ export function SampleDetailPage() {
       </Card>
 
       {/* Measured Heavy Metal Concentrations Table */}
-      <Card className="border-slate-800 bg-slate-900/80 p-0 overflow-hidden">
-        <CardHeader className="p-4 border-b border-slate-800 bg-slate-950/40">
-          <CardTitle className="text-base font-bold text-white">Laboratory Metal Concentrations</CardTitle>
+      <Card className="p-0 overflow-hidden">
+        <CardHeader className="p-5 border-b border-inset bg-inset/30">
+          <CardTitle>Laboratory Metal Concentrations</CardTitle>
           <CardDescription>
-            Measured analyte levels evaluated against standard baseline limits
+            Measured analyte levels evaluated against selected reference standard baseline limits
           </CardDescription>
         </CardHeader>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-950/70 text-slate-400 border-b border-slate-800 uppercase tracking-wider text-[11px]">
-              <tr>
-                <th className="py-3 px-4 font-semibold">Analyte</th>
-                <th className="py-3 px-4 font-semibold">Qualifier</th>
-                <th className="py-3 px-4 font-semibold">Concentration</th>
-                <th className="py-3 px-4 font-semibold">Standard Limit (S<sub>i</sub>)</th>
-                <th className="py-3 px-4 font-semibold">Sub-index (Q<sub>i</sub>)</th>
-                <th className="py-3 px-4 font-semibold text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/80">
-              {sample.measurements.map((m) => {
-                const isExceeded = analysis?.exceededAnalytes?.some((e) => e.symbol === m.symbol);
-                const trace = analysis?.hpi?.traces?.find((t) => t.symbol === m.symbol);
+        <Table>
+          <TableHeader>
+            <tr>
+              <TableHead>Analyte</TableHead>
+              <TableHead>Qualifier</TableHead>
+              <TableHead>Concentration</TableHead>
+              <TableHead>Standard Limit (S<sub>i</sub>)</TableHead>
+              <TableHead>Sub-index (Q<sub>i</sub>)</TableHead>
+              <TableHead className="text-right">Status</TableHead>
+            </tr>
+          </TableHeader>
+          <TableBody>
+            {sample.measurements.map((m) => {
+              const isExceeded = analysis?.exceededAnalytes?.some((e) => e.symbol === m.symbol);
+              const trace = analysis?.hpi?.traces?.find((t) => t.symbol === m.symbol);
 
-                return (
-                  <tr key={m.symbol} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="py-3 px-4 font-mono font-medium text-white">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-teal-300 w-6">{m.symbol}</span>
-                        <span className="text-slate-300 text-xs">{m.name}</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 font-mono text-slate-400">{m.qualifier || '='}</td>
-                    <td className="py-3 px-4 font-mono font-bold text-white">
-                      {m.value} {m.unit}
-                    </td>
-                    <td className="py-3 px-4 font-mono text-slate-300">
-                      {trace ? `${trace.permissibleLimit} mg/L` : '—'}
-                    </td>
-                    <td className="py-3 px-4 font-mono text-slate-300">
-                      {trace ? trace.subIndex.toFixed(1) : '—'}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      {isExceeded ? (
-                        <Badge variant="high" size="sm">
-                          Exceeds Limit
-                        </Badge>
-                      ) : (
-                        <Badge variant="safe" size="sm">
-                          Within Limit
-                        </Badge>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+              return (
+                <TableRow key={m.symbol}>
+                  <TableCell className="font-mono font-medium">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-forest-700 w-6">{m.symbol}</span>
+                      <span className="text-title font-semibold text-xs">{m.name}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-mono text-body">{m.qualifier || '='}</TableCell>
+                  <TableCell className="font-mono font-bold text-title">
+                    {m.value} {m.unit}
+                  </TableCell>
+                  <TableCell className="font-mono text-body">
+                    {trace ? `${trace.permissibleLimit} mg/L` : '—'}
+                  </TableCell>
+                  <TableCell className="font-mono text-body">
+                    {trace ? trace.subIndex.toFixed(1) : '—'}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {isExceeded ? (
+                      <Badge variant="high" size="sm">
+                        Exceeds Limit
+                      </Badge>
+                    ) : (
+                      <Badge variant="safe" size="sm">
+                        Within Limit
+                      </Badge>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
       </Card>
     </div>
   );

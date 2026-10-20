@@ -2,8 +2,11 @@ import React, { useState, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { GoogleLogin } from '@react-oauth/google';
-import { Shield, ArrowRight, AlertCircle, Check, Loader2 } from 'lucide-react';
+import { Shield, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 import { LODHandlingStrategy } from '@metalsense/shared';
+import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
+import { Button } from '../../components/ui/Button';
 
 export function SignupPage() {
   const { signupWithEmail, loginWithGoogle } = useAuth();
@@ -74,27 +77,27 @@ export function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#E9F4EA] flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans selection:bg-[#002F18] selection:text-white">
+    <div className="min-h-screen bg-page flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans selection:bg-forest-900 selection:text-white">
       <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
         <Link to="/" className="inline-flex items-center gap-2 mb-4">
-          <div className="w-10 h-10 rounded-full bg-[#002F18] flex items-center justify-center text-white shadow-sm">
-            <Shield className="w-5 h-5 text-[#E9F4EA]" />
+          <div className="w-10 h-10 rounded-full bg-forest-900 flex items-center justify-center text-white shadow-sm">
+            <Shield className="w-5 h-5 text-page" />
           </div>
-          <span className="text-2xl font-bold tracking-tight text-[#0F1F17]">MetalSense</span>
+          <span className="text-2xl font-bold tracking-tight text-title">Metal Sense</span>
         </Link>
-        <h1 className="text-3xl font-extrabold text-[#0F1F17] tracking-tight">Create your workspace</h1>
-        <p className="mt-2 text-sm text-[#4B5F54]">
+        <h1 className="text-3xl font-extrabold text-title tracking-tight">Create your workspace</h1>
+        <p className="mt-2 text-sm text-body">
           Already have an account?{' '}
-          <Link to={`/login?next=${encodeURIComponent(next)}`} className="font-semibold text-[#002F18] hover:underline">
+          <Link to={`/login?next=${encodeURIComponent(next)}`} className="font-semibold text-forest-900 hover:underline">
             Sign in
           </Link>
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-lg px-4">
-        <div className="bg-[#ECF5EB] py-8 px-6 sm:px-10 shadow-[0_8px_30px_rgba(0,47,24,0.06)] rounded-[28px] border border-[#DFEADD]">
+        <div className="bg-card py-8 px-6 sm:px-10 shadow-soft rounded-card border border-inset">
           {error && (
-            <div className="mb-6 p-4 rounded-[20px] bg-[#FBE3E1] border border-[#F5C2BF] flex items-start gap-3 text-sm text-[#C2413B]">
+            <div className="mb-6 p-4 rounded-panel bg-status-critical-bg border border-status-critical-border flex items-start gap-3 text-sm text-status-critical">
               <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
@@ -102,10 +105,10 @@ export function SignupPage() {
 
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="name" className="block text-xs font-semibold uppercase tracking-wider text-[#4B5F54] mb-1.5 ml-1">
+              <label htmlFor="name" className="block text-xs font-semibold uppercase tracking-wider text-body mb-1.5 ml-1">
                 Full Name
               </label>
-              <input
+              <Input
                 id="name"
                 name="name"
                 type="text"
@@ -113,15 +116,14 @@ export function SignupPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Dr. Maya Sen"
-                className="w-full px-5 py-3 rounded-full bg-[#F0FCEF] border border-[#DDEBDB] text-[#0F1F17] placeholder-[#7C8F84] text-sm focus:outline-none focus:ring-2 focus:ring-[#002F18] transition-all"
               />
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-wider text-[#4B5F54] mb-1.5 ml-1">
+              <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-wider text-body mb-1.5 ml-1">
                 Work Email
               </label>
-              <input
+              <Input
                 id="email"
                 name="email"
                 type="email"
@@ -130,15 +132,14 @@ export function SignupPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="maya@water-council.gov"
-                className="w-full px-5 py-3 rounded-full bg-[#F0FCEF] border border-[#DDEBDB] text-[#0F1F17] placeholder-[#7C8F84] text-sm focus:outline-none focus:ring-2 focus:ring-[#002F18] transition-all"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-xs font-semibold uppercase tracking-wider text-[#4B5F54] mb-1.5 ml-1">
+              <label htmlFor="password" className="block text-xs font-semibold uppercase tracking-wider text-body mb-1.5 ml-1">
                 Password (min 10 characters)
               </label>
-              <input
+              <Input
                 id="password"
                 name="password"
                 type="password"
@@ -146,22 +147,21 @@ export function SignupPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
-                className="w-full px-5 py-3 rounded-full bg-[#F0FCEF] border border-[#DDEBDB] text-[#0F1F17] placeholder-[#7C8F84] text-sm focus:outline-none focus:ring-2 focus:ring-[#002F18] transition-all"
               />
               {password.length > 0 && (
                 <div className="mt-2 px-1">
-                  <div className="flex gap-1 h-1.5 w-full bg-[#DDEBDB] rounded-full overflow-hidden">
+                  <div className="flex gap-1 h-1.5 w-full bg-pill-unselected rounded-full overflow-hidden">
                     <div
                       className={`h-full transition-all duration-300 ${
                         passwordStrength <= 2
-                          ? 'w-1/3 bg-[#C2413B]'
+                          ? 'w-1/3 bg-status-critical'
                           : passwordStrength <= 3
-                          ? 'w-2/3 bg-[#B7791F]'
-                          : 'w-full bg-[#1F8A5B]'
+                          ? 'w-2/3 bg-status-warning'
+                          : 'w-full bg-status-safe'
                       }`}
                     />
                   </div>
-                  <div className="flex justify-between items-center text-[11px] text-[#7C8F84] mt-1">
+                  <div className="flex justify-between items-center text-[11px] text-caption mt-1">
                     <span>
                       {passwordStrength <= 2 ? 'Weak' : passwordStrength <= 3 ? 'Medium' : 'Strong'}
                     </span>
@@ -171,56 +171,55 @@ export function SignupPage() {
               )}
             </div>
 
-            <div className="pt-2 border-t border-[#DFEADD]">
-              <label htmlFor="workspaceName" className="block text-xs font-semibold uppercase tracking-wider text-[#4B5F54] mb-1.5 ml-1">
+            <div className="pt-2 border-t border-inset">
+              <label htmlFor="workspaceName" className="block text-xs font-semibold uppercase tracking-wider text-body mb-1.5 ml-1">
                 Workspace Name (Optional)
               </label>
-              <input
+              <Input
                 id="workspaceName"
                 name="workspaceName"
                 type="text"
                 value={workspaceName}
                 onChange={(e) => setWorkspaceName(e.target.value)}
                 placeholder="e.g. Northern Aquifer Monitoring Lab"
-                className="w-full px-5 py-3 rounded-full bg-[#F0FCEF] border border-[#DDEBDB] text-[#0F1F17] placeholder-[#7C8F84] text-sm focus:outline-none focus:ring-2 focus:ring-[#002F18] transition-all"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#4B5F54] mb-1 ml-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-body mb-1 ml-1">
                   Default Standard
                 </label>
-                <select
+                <Select
                   value={defaultStandard}
                   onChange={(e) => setDefaultStandard(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-full bg-[#F0FCEF] border border-[#DDEBDB] text-[#0F1F17] text-xs focus:outline-none focus:ring-2 focus:ring-[#002F18]"
+                  className="text-xs"
                 >
                   <option value="BIS_10500_2012">IS 10500:2012 (India)</option>
                   <option value="WHO_GDWQ_4TH">WHO GDWQ 4th Ed.</option>
-                </select>
+                </Select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-[#4B5F54] mb-1 ml-1">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-body mb-1 ml-1">
                   LOD Strategy
                 </label>
-                <select
+                <Select
                   value={defaultLodStrategy}
                   onChange={(e) => setDefaultLodStrategy(e.target.value as LODHandlingStrategy)}
-                  className="w-full px-4 py-2.5 rounded-full bg-[#F0FCEF] border border-[#DDEBDB] text-[#0F1F17] text-xs focus:outline-none focus:ring-2 focus:ring-[#002F18]"
+                  className="text-xs"
                 >
                   <option value="half_lod">EPA 0.5 × LOD (Standard)</option>
                   <option value="zero">Zero Substitution</option>
                   <option value="full_lod">Conservative Full LOD</option>
-                </select>
+                </Select>
               </div>
             </div>
 
-            <button
+            <Button
               type="submit"
               disabled={isLoading}
-              className="w-full mt-4 py-3.5 px-6 rounded-full bg-[#002F18] hover:bg-[#0B4A2C] text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer active:scale-[0.98]"
+              className="w-full mt-4 h-11"
             >
               {isLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -230,16 +229,16 @@ export function SignupPage() {
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
-            </button>
+            </Button>
           </form>
 
           <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-[#DDEBDB]" />
+                <div className="w-full border-t border-inset" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-[#ECF5EB] px-3 text-[#7C8F84] font-medium">Or continue with</span>
+                <span className="bg-card px-3 text-caption font-medium">Or continue with</span>
               </div>
             </div>
 

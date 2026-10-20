@@ -17,13 +17,13 @@ export function Badge({
     'inline-flex items-center font-semibold rounded-full border tracking-wide transition-colors select-none';
 
   const variants = {
-    default: 'bg-white text-[#002F18] border-[#DFEADD] shadow-sm',
-    outline: 'bg-transparent text-[#002F18] border-[#BED4BC]',
-    safe: 'bg-[#DDF3E6] text-[#1F8A5B] border-[#A6E1BE]',
-    moderate: 'bg-[#FBF0D6] text-[#B7791F] border-[#F5DC9A]',
-    high: 'bg-[#FBE3E1] text-[#C2413B] border-[#F6BDB8]',
-    unverified: 'bg-[#F0FCEF] text-[#7C8F84] border-[#DFEADD] border-dashed',
-    cyan: 'bg-white text-[#002F18] border-[#DFEADD] shadow-sm font-bold',
+    default: 'bg-raised text-forest-900 border-inset shadow-sm',
+    outline: 'bg-transparent text-forest-900 border-inset',
+    safe: 'bg-status-safe-bg text-status-safe-text border-status-safe-border',
+    moderate: 'bg-status-warning-bg text-status-warning-text border-status-warning-border',
+    high: 'bg-status-critical-bg text-status-critical-text border-status-critical-border',
+    unverified: 'bg-raised text-caption border-inset border-dashed',
+    cyan: 'bg-pill-unselected text-forest-900 border-inset shadow-sm font-bold',
   };
 
   const sizes = {

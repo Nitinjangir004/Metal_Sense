@@ -3,22 +3,27 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import {
   FileText,
   CheckCircle2,
-  AlertTriangle,
-  ArrowRight,
-  Eye,
-  FileCheck2,
-  ShieldCheck,
-  RefreshCw,
-  HelpCircle,
   Plus,
   Trash2,
   Upload,
   Loader2,
+  ArrowLeft,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Alert } from '../../components/ui/Alert';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { Input } from '../../components/ui/Input';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '../../components/ui/Table';
 import { useAuth } from '../auth/AuthContext';
 import { useExtractionJob, useConfirmExtraction, useUploadDocument } from '../../lib/api';
 import {
@@ -27,6 +32,7 @@ import {
   ConcentrationUnit,
   MeasurementQualifier,
 } from '@metalsense/shared';
+import { cn } from '../../lib/utils';
 
 interface CandidateRow {
   symbol: MetalSymbol;
@@ -46,7 +52,7 @@ export function ReviewExtractionPage() {
   const workspaceId = activeWorkspace?.id;
   const jobId = searchParams.get('jobId');
 
-  const { data: jobData, isLoading: jobLoading, isError: jobError } = useExtractionJob(
+  const { data: jobData, isLoading: jobLoading } = useExtractionJob(
     workspaceId,
     jobId || undefined
   );
@@ -199,49 +205,37 @@ export function ReviewExtractionPage() {
 
   if (!jobId) {
     return (
-      <div className="max-w-3xl mx-auto p-12 text-center bg-slate-900/70 rounded-3xl border border-slate-800 space-y-6">
-        <FileText className="w-16 h-16 text-slate-600 mx-auto" />
-        <div>
-          <h2 className="text-xl font-bold text-white">No Document Extraction Job Selected</h2>
-          <p className="text-xs text-slate-400 mt-2 max-w-md mx-auto">
-            Upload an environmental laboratory report certificate (PDF or image) to initiate OCR extraction with human-in-the-loop review.
-          </p>
-        </div>
-
-        <div className="pt-2">
-          <label className="cursor-pointer">
-            <Button
-              variant="primary"
-              size="md"
-              disabled={uploadDocMutation.isPending}
-              leftIcon={
-                uploadDocMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin text-white" />
-                ) : (
-                  <Upload className="w-4 h-4" />
-                )
-              }
-            >
-              {uploadDocMutation.isPending ? 'Uploading & Extracting...' : 'Upload Lab Certificate (PDF / Image)'}
-            </Button>
-            <input
-              type="file"
-              accept=".pdf,image/png,image/jpeg,image/webp"
-              className="hidden"
-              onChange={handleDirectFileUpload}
-            />
-          </label>
-        </div>
+      <div className="py-8">
+        <EmptyState
+          icon={FileText}
+          title="No Document Extraction Job Selected"
+          description="Upload an environmental laboratory report certificate (PDF or image) to initiate OCR extraction with human-in-the-loop review."
+          action={{
+            label: 'Choose PDF / Image Certificate',
+            onClick: () => {
+              const el = document.getElementById('direct-cert-upload');
+              el?.click();
+            },
+            icon: <Upload className="w-4 h-4" />,
+          }}
+        />
+        <input
+          id="direct-cert-upload"
+          type="file"
+          accept=".pdf,image/png,image/jpeg,image/webp"
+          className="hidden"
+          onChange={handleDirectFileUpload}
+        />
       </div>
     );
   }
 
   if (jobLoading) {
     return (
-      <div className="max-w-4xl mx-auto p-16 text-center text-slate-400 space-y-4">
-        <Loader2 className="w-10 h-10 animate-spin text-teal-400 mx-auto" />
-        <h3 className="text-base font-bold text-white">Extracting Candidate Measurements...</h3>
-        <p className="text-xs text-slate-400">
+      <div className="max-w-4xl mx-auto p-16 text-center text-body space-y-4">
+        <Loader2 className="w-10 h-10 animate-spin text-forest-700 mx-auto" />
+        <h3 className="text-base font-bold text-title">Extracting Candidate Measurements...</h3>
+        <p className="text-xs text-body">
           Running OCR parser and analyzing document bounding boxes.
         </p>
       </div>
@@ -250,35 +244,35 @@ export function ReviewExtractionPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <span>Review &amp; Verify Document Extraction</span>
-            <Badge variant="outline" className="text-xs text-amber-400 border-amber-500/30">
-              UNVERIFIED CANDIDATE STATE
-            </Badge>
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Mandatory human verification: confirm or adjust proposed values extracted from{' '}
-            <strong className="text-slate-200">{documentName}</strong>.
-          </p>
-        </div>
-
-        <Button
-          variant="primary"
-          onClick={handleConfirmExtraction}
-          disabled={confirmMutation.isPending}
-          leftIcon={
-            confirmMutation.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin text-white" />
-            ) : (
-              <CheckCircle2 className="w-4 h-4" />
-            )
-          }
-        >
-          {confirmMutation.isPending ? 'Creating Sample...' : 'Approve & Ingest Sample'}
-        </Button>
-      </div>
+      <PageHeader
+        title="Review &amp; Verify Document Extraction"
+        workspaceName={activeWorkspace?.name}
+        description={`Mandatory human verification: confirm or adjust proposed values extracted from ${documentName}.`}
+        badge={<Badge variant="moderate">UNVERIFIED CANDIDATE STATE</Badge>}
+        actions={
+          <div className="flex items-center gap-2.5">
+            <Link to="/app/samples/new">
+              <Button variant="ghost" size="sm" leftIcon={<ArrowLeft className="w-4 h-4" />}>
+                Cancel
+              </Button>
+            </Link>
+            <Button
+              variant="primary"
+              onClick={handleConfirmExtraction}
+              disabled={confirmMutation.isPending}
+              leftIcon={
+                confirmMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4" />
+                )
+              }
+            >
+              {confirmMutation.isPending ? 'Creating Sample...' : 'Approve & Ingest Sample'}
+            </Button>
+          </div>
+        }
+      />
 
       {feedback && (
         <Alert variant={feedback.type === 'success' ? 'success' : 'danger'}>
@@ -293,59 +287,56 @@ export function ReviewExtractionPage() {
       </Alert>
 
       {/* Metadata Form */}
-      <Card className="border-slate-800 bg-slate-900/80">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-base font-bold text-white">Extracted Metadata</CardTitle>
+          <CardTitle>Extracted Metadata</CardTitle>
           <CardDescription>Verify laboratory, sample code, and location identifiers</CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
           <div>
-            <label className="block text-slate-300 font-medium mb-1">Sample Code</label>
-            <input
+            <label className="block text-body font-semibold mb-1.5 ml-1">Sample Code</label>
+            <Input
               type="text"
               value={sampleCode}
               onChange={(e) => setSampleCode(e.target.value)}
-              className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white font-mono"
+              className="font-mono"
             />
           </div>
 
           <div>
-            <label className="block text-slate-300 font-medium mb-1">Testing Laboratory</label>
-            <input
+            <label className="block text-body font-semibold mb-1.5 ml-1">Testing Laboratory</label>
+            <Input
               type="text"
               value={labName}
               onChange={(e) => setLabName(e.target.value)}
-              className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white"
             />
           </div>
 
           <div>
-            <label className="block text-slate-300 font-medium mb-1">Sampling Location</label>
-            <input
+            <label className="block text-body font-semibold mb-1.5 ml-1">Sampling Location</label>
+            <Input
               type="text"
               value={locationName}
               onChange={(e) => setLocationName(e.target.value)}
-              className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white"
             />
           </div>
 
           <div>
-            <label className="block text-slate-300 font-medium mb-1">District / State</label>
-            <input
+            <label className="block text-body font-semibold mb-1.5 ml-1">District / State</label>
+            <Input
               type="text"
               value={district}
               onChange={(e) => setDistrict(e.target.value)}
-              className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-white"
             />
           </div>
         </CardContent>
       </Card>
 
       {/* Candidate Analytes Verification Table */}
-      <Card className="border-slate-800 bg-slate-900/80 p-0 overflow-hidden">
-        <CardHeader className="p-4 border-b border-slate-800 bg-slate-950/40 flex flex-row items-center justify-between">
+      <Card className="p-0 overflow-hidden">
+        <CardHeader className="p-4 border-b border-inset bg-inset/30 flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-base font-bold text-white">
+            <CardTitle>
               Candidate Analyte Measurements ({candidates.length})
             </CardTitle>
             <CardDescription>
@@ -354,7 +345,7 @@ export function ReviewExtractionPage() {
           </div>
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             size="sm"
             onClick={handleAddAnalyte}
             leftIcon={<Plus className="w-3.5 h-3.5" />}
@@ -363,85 +354,84 @@ export function ReviewExtractionPage() {
           </Button>
         </CardHeader>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-950/70 text-slate-400 border-b border-slate-800 uppercase tracking-wider text-[11px]">
-              <tr>
-                <th className="py-3 px-4 font-semibold">Accept</th>
-                <th className="py-3 px-4 font-semibold">Analyte</th>
-                <th className="py-3 px-4 font-semibold">Qualifier</th>
-                <th className="py-3 px-4 font-semibold">Value</th>
-                <th className="py-3 px-4 font-semibold">Unit</th>
-                <th className="py-3 px-4 font-semibold">Confidence</th>
-                <th className="py-3 px-4 font-semibold text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/80">
-              {candidates.map((c, idx) => (
-                <tr
-                  key={idx}
-                  className={`transition-colors ${
-                    c.confirmed ? 'bg-slate-950/30' : 'bg-slate-950/80 opacity-50'
-                  }`}
-                >
-                  <td className="py-3 px-4">
-                    <input
-                      type="checkbox"
-                      checked={c.confirmed}
-                      onChange={() => handleToggleConfirm(idx)}
-                      className="w-4 h-4 rounded border-slate-700 text-teal-600 focus:ring-teal-500 cursor-pointer"
-                    />
-                  </td>
-                  <td className="py-3 px-4 font-mono font-medium text-white">
-                    <span className="font-bold text-teal-300 mr-2">{c.symbol}</span>
-                    <span className="text-slate-300 text-xs">{c.name}</span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <select
-                      value={c.qualifier}
-                      onChange={(e) =>
-                        handleQualifierChange(idx, e.target.value as MeasurementQualifier)
-                      }
-                      className="rounded bg-slate-900 border border-slate-700 px-2 py-1 text-xs text-white"
-                    >
-                      <option value="=">=</option>
-                      <option value="<">&lt; (LOD)</option>
-                      <option value="<=">&le;</option>
-                      <option value=">">&gt;</option>
-                    </select>
-                  </td>
-                  <td className="py-3 px-4">
-                    <input
-                      type="number"
-                      step="any"
-                      value={c.value}
-                      onChange={(e) => handleValueChange(idx, e.target.value)}
-                      className="w-24 rounded bg-slate-900 border border-slate-700 px-2 py-1 text-xs text-white font-mono"
-                    />
-                  </td>
-                  <td className="py-3 px-4 font-mono text-slate-400">{c.unit}</td>
-                  <td className="py-3 px-4">
-                    <Badge
-                      variant={c.confidence >= 0.9 ? 'safe' : 'moderate'}
-                      size="sm"
-                    >
-                      {Math.round(c.confidence * 100)}% (p.{c.page})
-                    </Badge>
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveAnalyte(idx)}
-                      className="p-1 text-slate-500 hover:text-rose-400"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <tr>
+              <TableHead className="w-16">Accept</TableHead>
+              <TableHead>Analyte</TableHead>
+              <TableHead>Qualifier</TableHead>
+              <TableHead>Value</TableHead>
+              <TableHead>Unit</TableHead>
+              <TableHead>Confidence</TableHead>
+              <TableHead className="text-right">Action</TableHead>
+            </tr>
+          </TableHeader>
+          <TableBody>
+            {candidates.map((c, idx) => (
+              <TableRow
+                key={idx}
+                className={cn(
+                  'transition-colors',
+                  !c.confirmed && 'opacity-50 bg-inset/20'
+                )}
+              >
+                <TableCell>
+                  <input
+                    type="checkbox"
+                    checked={c.confirmed}
+                    onChange={() => handleToggleConfirm(idx)}
+                    className="w-4 h-4 rounded border-inset text-forest-900 focus:ring-forest-500 cursor-pointer accent-forest-900"
+                  />
+                </TableCell>
+                <TableCell className="font-mono font-medium">
+                  <span className="font-bold text-forest-700 mr-2">{c.symbol}</span>
+                  <span className="text-title text-xs font-semibold">{c.name}</span>
+                </TableCell>
+                <TableCell>
+                  <select
+                    value={c.qualifier}
+                    onChange={(e) =>
+                      handleQualifierChange(idx, e.target.value as MeasurementQualifier)
+                    }
+                    className="rounded-full bg-raised border border-inset px-3 py-1 text-xs text-title font-mono cursor-pointer"
+                  >
+                    <option value="=">=</option>
+                    <option value="<">&lt; (LOD)</option>
+                    <option value="<=">&le;</option>
+                    <option value=">">&gt;</option>
+                  </select>
+                </TableCell>
+                <TableCell>
+                  <input
+                    type="number"
+                    step="any"
+                    value={c.value}
+                    onChange={(e) => handleValueChange(idx, e.target.value)}
+                    className="w-24 rounded-full bg-raised border border-inset px-3 py-1 text-xs text-title font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-forest-500"
+                  />
+                </TableCell>
+                <TableCell className="font-mono text-body font-semibold">{c.unit}</TableCell>
+                <TableCell>
+                  <Badge
+                    variant={c.confidence >= 0.9 ? 'safe' : 'moderate'}
+                    size="sm"
+                  >
+                    {Math.round(c.confidence * 100)}% (p.{c.page})
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveAnalyte(idx)}
+                    className="p-1.5 text-body hover:text-status-critical rounded-full hover:bg-inset transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </Card>
     </div>
   );
