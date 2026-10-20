@@ -33,7 +33,7 @@ const UserSchema = new Schema<UserDocument>(
     createdAt: { type: String, required: true },
     updatedAt: { type: String, required: true },
   },
-  { _id: false, timestamps: false }
+  { timestamps: false, versionKey: false, id: false }
 );
 
 // --- Workspace Model ---
@@ -67,7 +67,7 @@ const WorkspaceSchema = new Schema<WorkspaceDocument>(
     createdAt: { type: String, required: true },
     updatedAt: { type: String, required: true },
   },
-  { _id: false, timestamps: false }
+  { timestamps: false, versionKey: false, id: false }
 );
 WorkspaceSchema.index({ 'members.userId': 1 });
 
@@ -88,7 +88,7 @@ const ProjectSchema = new Schema<ProjectDocument>(
     description: { type: String },
     createdAt: { type: String, required: true },
   },
-  { _id: false, timestamps: false }
+  { timestamps: false, versionKey: false, id: false }
 );
 
 // --- Sample Model ---
@@ -157,7 +157,7 @@ const SampleSchema = new Schema<SampleDocument>(
     createdAt: { type: String, required: true },
     updatedAt: { type: String, required: true },
   },
-  { _id: false, timestamps: false }
+  { timestamps: false, versionKey: false, id: false }
 );
 
 SampleSchema.index({ workspaceId: 1, sampleCode: 1 }, { unique: true });
@@ -193,7 +193,7 @@ const AnalysisRunSchema = new Schema<AnalysisRunDocument>(
       engineVersion: { type: String, required: true },
     },
   },
-  { _id: false, timestamps: false }
+  { timestamps: false, versionKey: false, id: false }
 );
 
 AnalysisRunSchema.index({ sampleId: 1, timestamp: -1 });
@@ -240,7 +240,7 @@ const ExtractionJobSchema = new Schema<ExtractionJobDocument>(
     confirmedAt: { type: String },
     createdSampleId: { type: String },
   },
-  { _id: false, timestamps: false }
+  { timestamps: false, versionKey: false, id: false }
 );
 
 // --- AuditEvent Model ---
@@ -272,7 +272,7 @@ const AuditEventSchema = new Schema<AuditEventDocument>(
     ipAddress: { type: String },
     details: { type: Schema.Types.Mixed },
   },
-  { _id: false, timestamps: false }
+  { timestamps: false, versionKey: false, id: false }
 );
 
 AuditEventSchema.index({ workspaceId: 1, timestamp: -1 });

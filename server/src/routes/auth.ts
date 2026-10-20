@@ -21,6 +21,22 @@ import { db } from '../db/store.js';
 
 export const authRouter = Router();
 
+/**
+ * GET /api/v1/auth/config
+ * Public auth configuration, including Google OAuth Client ID.
+ */
+authRouter.get('/config', (_req: Request, res: Response) => {
+  const googleClientId =
+    process.env.VITE_GOOGLE_CLIENT_ID ||
+    process.env.GOOGLE_CLIENT_ID ||
+    '609088830726-jrmfngn44krp09211fqutj94glmicg61.apps.googleusercontent.com';
+  res.json({
+    data: {
+      googleClientId,
+    },
+  });
+});
+
 const SignupPayloadSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email address'),
@@ -76,7 +92,6 @@ authRouter.post('/signup', async (req: Request, res: Response) => {
 
     const token = createSessionToken(user);
     setSessionCookie(res, token);
-
     await db.recordAudit(workspace.id, user.id, 'USER_SIGN_UP', 'user', user.id, {
       method: 'email_password',
     });

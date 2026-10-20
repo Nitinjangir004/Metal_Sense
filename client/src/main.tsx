@@ -18,7 +18,8 @@ const queryClient = new QueryClient({
 
 const googleClientId =
   (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID ||
-  '1000000000000-dummy-google-client-id.apps.googleusercontent.com';
+  (import.meta as any).env?.GOOGLE_CLIENT_ID ||
+  '609088830726-jrmfngn44krp09211fqutj94glmicg61.apps.googleusercontent.com';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>

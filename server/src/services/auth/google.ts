@@ -5,7 +5,8 @@ let googleClient: OAuth2Client | null = null;
 
 function getClient(): OAuth2Client {
   if (!googleClient) {
-    googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    const clientId = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
+    googleClient = new OAuth2Client(clientId);
   }
   return googleClient;
 }
@@ -23,9 +24,10 @@ export interface VerifiedGoogleUser {
  */
 export async function verifyGoogleIdToken(idToken: string): Promise<VerifiedGoogleUser> {
   const client = getClient();
+  const clientId = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
   const ticket = await client.verifyIdToken({
     idToken,
-    audience: process.env.GOOGLE_CLIENT_ID,
+    audience: clientId,
   });
 
   const payload = ticket.getPayload();

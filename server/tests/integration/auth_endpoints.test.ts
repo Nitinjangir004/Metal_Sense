@@ -8,6 +8,13 @@ describe('Real Authentication Endpoints', () => {
   let sessionCookie: string;
   let userToken: string;
 
+  it('GET /api/v1/auth/config - returns Google Client ID configuration', async () => {
+    const res = await request(app).get('/api/v1/auth/config');
+    expect(res.status).toBe(200);
+    expect(res.body.data.googleClientId).toBeDefined();
+    expect(res.body.data.googleClientId).toContain('apps.googleusercontent.com');
+  });
+
   it('POST /api/v1/auth/signup - creates user and workspace, returns token and session cookie', async () => {
     const res = await request(app)
       .post('/api/v1/auth/signup')

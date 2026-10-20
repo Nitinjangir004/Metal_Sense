@@ -246,7 +246,11 @@ export function SignupPage() {
             <div className="mt-5 flex justify-center">
               <GoogleLogin
                 onSuccess={handleGoogleSuccess}
-                onError={() => setError('Google sign-up failed.')}
+                onError={() =>
+                  setError(
+                    'Google sign-up could not be completed. If testing locally, ensure "http://localhost:5173" is added to Authorized JavaScript Origins in your Google Cloud Console OAuth 2.0 Client credentials.'
+                  )
+                }
                 shape="pill"
                 theme="outline"
                 text="signup_with"

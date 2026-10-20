@@ -171,4 +171,100 @@ describe('Phase 1 — Persistence, Summary & Sample Query Test Suite', () => {
 
     expect(getRes.status).toBe(404);
   });
+
+  it('ensures Mongoose models generate _id automatically preventing document must have an _id before saving error', async () => {
+    const {
+      UserModel,
+      WorkspaceModel,
+      ProjectModel,
+      SampleModel,
+      AnalysisRunModel,
+      ExtractionJobModel,
+      AuditEventModel,
+    } = await import('../../src/db/models/index.js');
+
+    const userDoc = new UserModel({
+      id: 'usr-test-model',
+      email: 'test-model@metalsense.test',
+      name: 'Model Tester',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    expect(userDoc._id).toBeDefined();
+
+    const wsDoc = new WorkspaceModel({
+      id: 'ws-test-model',
+      name: 'Test WS',
+      slug: 'test-ws',
+      ownerId: 'usr-test-model',
+      members: [{ userId: 'usr-test-model', role: 'owner' }],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    expect(wsDoc._id).toBeDefined();
+
+    const projDoc = new ProjectModel({
+      id: 'proj-test-model',
+      workspaceId: 'ws-test-model',
+      name: 'Test Proj',
+      createdAt: new Date().toISOString(),
+    });
+    expect(projDoc._id).toBeDefined();
+
+    const sampleDoc = new SampleModel({
+      id: 'smp-test-model',
+      workspaceId: 'ws-test-model',
+      projectId: 'proj-test-model',
+      sampleCode: 'SMP-01',
+      sampleMatrix: 'groundwater',
+      collectionDate: new Date().toISOString(),
+      location: { id: 'l1', name: 'L1', code: 'LOC-1' },
+      measurements: [],
+      provenance: { method: 'manual' },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    expect(sampleDoc._id).toBeDefined();
+
+    const analysisDoc = new AnalysisRunModel({
+      id: 'run-test-model',
+      sampleId: 'smp-test-model',
+      workspaceId: 'ws-test-model',
+      timestamp: new Date().toISOString(),
+      calculationVersion: '1.0.0',
+      standardUsed: { code: 'BIS_10500_2012', version: '2012', citation: 'BIS' },
+      lodStrategy: 'half_lod',
+      normalizedUnit: 'mg/L',
+      hpi: { score: 10, classification: 'low' },
+      hei: { score: 1, classification: 'low' },
+      cd: { score: 0, classification: 'low' },
+      overallPollutionCategory: 'low',
+      auditTrail: { formulaVersion: '1.0.0', calculatedAt: new Date().toISOString(), engineVersion: '1.0.0' },
+    });
+    expect(analysisDoc._id).toBeDefined();
+
+    const jobDoc = new ExtractionJobModel({
+      id: 'job-test-model',
+      workspaceId: 'ws-test-model',
+      userId: 'usr-test-model',
+      originalFileName: 'test.csv',
+      fileKey: 'key',
+      mimeType: 'text/csv',
+      sizeBytes: 100,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    });
+    expect(jobDoc._id).toBeDefined();
+
+    const auditDoc = new AuditEventModel({
+      id: 'aud-test-model',
+      workspaceId: 'ws-test-model',
+      userId: 'usr-test-model',
+      action: 'TEST',
+      targetType: 'user',
+      targetId: 'usr-test-model',
+      timestamp: new Date().toISOString(),
+    });
+    expect(auditDoc._id).toBeDefined();
+  });
 });
