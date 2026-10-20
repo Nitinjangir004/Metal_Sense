@@ -199,6 +199,7 @@ export interface User {
   name: string;
   avatarUrl?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Workspace {
@@ -210,7 +211,10 @@ export interface Workspace {
     userId: string;
     role: UserRole;
   }[];
+  defaultStandard?: string;
+  defaultLodStrategy?: LODHandlingStrategy;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface Project {

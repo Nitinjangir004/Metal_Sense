@@ -43,8 +43,12 @@ importsRouter.post(
 
     if (req.file) {
       if (!verifyFileMagicBytes(req.file.path, req.file.mimetype)) {
-        try { fs.unlinkSync(req.file.path); } catch {}
-        return res.status(400).json({ error: 'Uploaded file signature does not match CSV/text format.' });
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch {}
+        return res
+          .status(400)
+          .json({ error: 'Uploaded file signature does not match CSV/text format.' });
       }
       csvText = fs.readFileSync(req.file.path, 'utf8');
       fileName = req.file.originalname;
@@ -57,7 +61,7 @@ importsRouter.post(
       });
     }
 
-    const projects = db.findProjectsByWorkspace(req.params.workspaceId);
+    const projects = await db.findProjectsByWorkspace(req.params.workspaceId);
     const projectId = projects[0]?.id || 'proj-default';
 
     const parseResult = parseSamplesCsv(
@@ -68,17 +72,18 @@ importsRouter.post(
     );
 
     // Save valid samples and execute calculations
-    const created = parseResult.samples.map((sampleData) => {
-      const sample = db.createSample(sampleData);
+    const created = [];
+    for (const sampleData of parseResult.samples) {
+      const sample = await db.createSample(sampleData);
       const analysis = calculateSampleIndices(sample, {
         standard: BIS_10500_2012,
         lodStrategy: 'half_lod',
       });
-      db.analyses.set(sample.id, analysis);
-      return { sample, analysis };
-    });
+      await db.createAnalysis(analysis);
+      created.push({ sample, analysis });
+    }
 
-    db.recordAudit(
+    await db.recordAudit(
       req.params.workspaceId,
       req.user!.id,
       'IMPORT_CSV',
@@ -113,11 +118,15 @@ importsRouter.post(
     }
 
     if (!verifyFileMagicBytes(req.file.path, req.file.mimetype)) {
-      try { fs.unlinkSync(req.file.path); } catch {}
-      return res.status(400).json({ error: 'Uploaded file signature does not match expected PDF/Image format.' });
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch {}
+      return res.status(400).json({
+        error: 'Uploaded file signature does not match expected PDF/Image format.',
+      });
     }
 
-    const job = db.createExtractionJob({
+    const job = await db.createExtractionJob({
       workspaceId: req.params.workspaceId,
       userId: req.user!.id,
       originalFileName: req.file.originalname,
@@ -135,12 +144,12 @@ importsRouter.post(
         req.file.originalname
       );
 
-      db.updateExtractionJob(job.id, {
+      await db.updateExtractionJob(job.id, {
         status: 'ready_for_review',
         proposedData: extracted,
       });
 
-      db.recordAudit(
+      await db.recordAudit(
         req.params.workspaceId,
         req.user!.id,
         'UPLOAD_DOCUMENT',
@@ -157,7 +166,7 @@ importsRouter.post(
         },
       });
     } catch (err: any) {
-      db.updateExtractionJob(job.id, {
+      await db.updateExtractionJob(job.id, {
         status: 'failed',
         error: err.message || 'Document extraction failed',
       });
@@ -176,8 +185,8 @@ importsRouter.post(
 importsRouter.get(
   '/:workspaceId/:jobId',
   requireWorkspaceRole('viewer'),
-  (req: Request, res: Response) => {
-    const job = db.findExtractionJobById(req.params.jobId);
+  async (req: Request, res: Response) => {
+    const job = await db.findExtractionJobById(req.params.jobId);
     if (!job || job.workspaceId !== req.params.workspaceId) {
       return res.status(404).json({ error: 'Extraction job not found.' });
     }
@@ -192,15 +201,17 @@ importsRouter.get(
 importsRouter.post(
   '/:workspaceId/:jobId/confirm',
   requireWorkspaceRole('editor'),
-  (req: Request, res: Response) => {
-    const job = db.findExtractionJobById(req.params.jobId);
+  async (req: Request, res: Response) => {
+    const job = await db.findExtractionJobById(req.params.jobId);
     if (!job || job.workspaceId !== req.params.workspaceId) {
       return res.status(404).json({ error: 'Extraction job not found.' });
     }
 
     const ConfirmSchema = z.object({
       sampleCode: z.string().min(2),
-      sampleMatrix: z.enum(['drinking_water', 'groundwater', 'surface_water']).default('groundwater'),
+      sampleMatrix: z
+        .enum(['drinking_water', 'groundwater', 'surface_water'])
+        .default('groundwater'),
       collectionDate: z.string().datetime(),
       locationName: z.string().min(1),
       district: z.string().optional(),
@@ -209,10 +220,10 @@ importsRouter.post(
     });
 
     const body = ConfirmSchema.parse(req.body);
-    const projects = db.findProjectsByWorkspace(req.params.workspaceId);
+    const projects = await db.findProjectsByWorkspace(req.params.workspaceId);
     const projectId = projects[0]?.id || 'proj-default';
 
-    const sample = db.createSample({
+    const sample = await db.createSample({
       workspaceId: req.params.workspaceId,
       projectId,
       sampleCode: body.sampleCode,
@@ -250,15 +261,15 @@ importsRouter.post(
       standard: BIS_10500_2012,
       lodStrategy: 'half_lod',
     });
-    db.analyses.set(sample.id, analysis);
+    await db.createAnalysis(analysis);
 
-    db.updateExtractionJob(job.id, {
+    await db.updateExtractionJob(job.id, {
       status: 'confirmed',
       confirmedAt: new Date().toISOString(),
       createdSampleId: sample.id,
     });
 
-    db.recordAudit(
+    await db.recordAudit(
       req.params.workspaceId,
       req.user!.id,
       'CONFIRM_OCR_EXTRACTION',

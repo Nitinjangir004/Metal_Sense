@@ -20,7 +20,7 @@ const ROLE_RANK: Record<UserRole, number> = {
   owner: 3,
 };
 
-export function authenticate(req: Request, res: Response, next: NextFunction) {
+export async function authenticate(req: Request, res: Response, next: NextFunction) {
   // Check cookie first, fallback to Authorization header
   let token = req.cookies?.[SESSION_COOKIE_NAME];
 
@@ -36,7 +36,7 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
 
   try {
     const payload = verifySessionToken(token);
-    const user = db.findUserById(payload.userId);
+    const user = await db.findUserById(payload.userId);
     if (!user) {
       return res.status(401).json({ error: 'User session not found or expired.' });
     }
@@ -51,7 +51,7 @@ export function authenticate(req: Request, res: Response, next: NextFunction) {
  * Enforces multi-tenant workspace isolation and RBAC.
  */
 export function requireWorkspaceRole(minRole: UserRole = 'viewer') {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({ error: 'Authentication required.' });
     }
@@ -67,12 +67,12 @@ export function requireWorkspaceRole(minRole: UserRole = 'viewer') {
       return res.status(400).json({ error: 'Workspace context (workspaceId) is required.' });
     }
 
-    const workspace = db.findWorkspaceById(workspaceId);
+    const workspace = await db.findWorkspaceById(workspaceId);
     if (!workspace) {
       return res.status(404).json({ error: `Workspace '${workspaceId}' not found.` });
     }
 
-    const userRole = db.getUserRoleInWorkspace(workspaceId, req.user.id);
+    const userRole = await db.getUserRoleInWorkspace(workspaceId, req.user.id);
     if (!userRole) {
       // User is not a member of this workspace -> cross-tenant denial
       return res.status(403).json({

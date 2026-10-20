@@ -10,7 +10,7 @@ describe('Sample Entry & File Ingestion Test Suite', () => {
   let workspaceId: string;
 
   beforeEach(async () => {
-    db.reset();
+    await db.reset();
 
     // Authenticate test user
     const loginRes = await request(app)

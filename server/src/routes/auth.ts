@@ -30,20 +30,22 @@ authRouter.post('/google', async (req: Request, res: Response) => {
     const { idToken } = GoogleAuthPayloadSchema.parse(req.body);
     const googleUser = await verifyGoogleIdToken(idToken);
 
-    let user = db.findUserByEmail(googleUser.email);
+    let user = await db.findUserByEmail(googleUser.email);
     if (!user) {
-      user = db.createUser({
+      user = await db.createUser({
         email: googleUser.email,
         name: googleUser.name,
         avatarUrl: googleUser.avatarUrl,
       });
+      // Create initial workspace
+      await db.createWorkspace(user.id, `${user.name.split(' ')[0]}'s Workspace`);
     }
 
     const token = createSessionToken(user);
     setSessionCookie(res, token);
 
-    const workspaces = db.findWorkspacesForUser(user.id);
-    db.recordAudit(
+    const workspaces = await db.findWorkspacesForUser(user.id);
+    await db.recordAudit(
       workspaces[0]?.id || 'system',
       user.id,
       'USER_SIGN_IN',
@@ -68,26 +70,30 @@ authRouter.post('/google', async (req: Request, res: Response) => {
  * POST /api/v1/auth/dev-login
  * Automated test & sandbox login (strictly gated to NODE_ENV === 'test').
  */
-authRouter.post('/dev-login', (req: Request, res: Response) => {
+authRouter.post('/dev-login', async (req: Request, res: Response) => {
   if (process.env.NODE_ENV !== 'test') {
     return res.status(404).json({ error: 'Endpoint not found.' });
   }
 
   const { email, name, role } = DevLoginPayloadSchema.parse(req.body);
 
-  let user = db.findUserByEmail(email);
+  let user = await db.findUserByEmail(email);
   if (!user) {
-    user = db.createUser({
+    user = await db.createUser({
       email,
       name,
       avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0f766e&color=fff`,
     });
+    const ws = await db.createWorkspace(user.id, `${name.split(' ')[0]}'s Workspace`);
+    if (role && role !== 'owner') {
+      await db.addWorkspaceMember(ws.id, user.id, role);
+    }
   }
 
   const token = createSessionToken(user);
   setSessionCookie(res, token);
 
-  const workspaces = db.findWorkspacesForUser(user.id);
+  const workspaces = await db.findWorkspacesForUser(user.id);
   res.json({
     data: {
       user,
@@ -102,9 +108,9 @@ authRouter.post('/dev-login', (req: Request, res: Response) => {
  * GET /api/v1/auth/me
  * Retrieves current authenticated user profile and workspaces.
  */
-authRouter.get('/me', authenticate, (req: Request, res: Response) => {
+authRouter.get('/me', authenticate, async (req: Request, res: Response) => {
   const user = req.user!;
-  const workspaces = db.findWorkspacesForUser(user.id);
+  const workspaces = await db.findWorkspacesForUser(user.id);
 
   res.json({
     data: {

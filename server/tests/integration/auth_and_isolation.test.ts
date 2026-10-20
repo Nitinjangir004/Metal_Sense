@@ -4,8 +4,8 @@ import { app } from '../../src/app.js';
 import { db } from '../../src/db/store.js';
 
 describe('Authentication & Multi-Tenant SaaS Isolation Tests', () => {
-  beforeEach(() => {
-    db.reset();
+  beforeEach(async () => {
+    await db.reset();
   });
 
   it('rejects unauthenticated requests to protected routes with 401', async () => {
@@ -110,7 +110,7 @@ describe('Authentication & Multi-Tenant SaaS Isolation Tests', () => {
     const viewerId = viewerLogin.body.data.user.id;
     const viewerToken = viewerLogin.body.data.token;
 
-    db.addWorkspaceMember(wsId, viewerId, 'viewer');
+    await db.addWorkspaceMember(wsId, viewerId, 'viewer');
 
     // 3. Viewer attempts to read -> Allowed (200)
     const readRes = await request(app)

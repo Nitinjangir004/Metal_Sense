@@ -9,7 +9,7 @@ describe('Auditable Report Generation & Export Integration Tests', () => {
   let sampleId: string;
 
   beforeEach(async () => {
-    db.reset();
+    await db.reset();
 
     // 1. Authenticate user
     const loginRes = await request(app)
