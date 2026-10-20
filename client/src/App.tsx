@@ -2,6 +2,11 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { LandingPage } from './features/landing/LandingPage';
 import { MethodologyPage } from './features/methodology/MethodologyPage';
+import { LoginPage } from './features/auth/LoginPage';
+import { SignupPage } from './features/auth/SignupPage';
+import { ForgotPasswordPage } from './features/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from './features/auth/ResetPasswordPage';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { AppShell } from './components/layout/AppShell';
 import { OverviewDashboard } from './features/dashboard/OverviewDashboard';
 import { SampleListPage } from './features/samples/SampleListPage';
@@ -21,8 +26,21 @@ export function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/methodology" element={<MethodologyPage />} />
 
-      {/* Authenticated / Demo App Shell */}
-      <Route path="/app" element={<AppShell />}>
+      {/* Authentication Pages */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+
+      {/* Authenticated Application Shell (Protected) */}
+      <Route
+        path="/app"
+        element={
+          <ProtectedRoute>
+            <AppShell />
+          </ProtectedRoute>
+        }
+      >
         <Route index element={<OverviewDashboard />} />
         <Route path="samples" element={<SampleListPage />} />
         <Route path="samples/new" element={<NewSampleWizard />} />
@@ -41,4 +59,5 @@ export function App() {
     </Routes>
   );
 }
+
 export default App;

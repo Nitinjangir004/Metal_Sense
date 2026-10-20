@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Workspace, UserRole } from '@metalsense/shared';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { User, Workspace, UserRole, LODHandlingStrategy } from '@metalsense/shared';
 
 interface AuthContextType {
   user: User | null;
@@ -8,82 +8,135 @@ interface AuthContextType {
   userRole: UserRole;
   isAuthenticated: boolean;
   isLoading: boolean;
-  loginAsDevUser: (email: string, name: string, role?: UserRole) => Promise<void>;
+  loginWithEmail: (email: string, password: string) => Promise<void>;
+  signupWithEmail: (
+    name: string,
+    email: string,
+    password: string,
+    workspaceName?: string,
+    defaultStandard?: string,
+    defaultLodStrategy?: LODHandlingStrategy
+  ) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
   logout: () => Promise<void>;
   switchWorkspace: (workspaceId: string) => void;
+  updateActiveWorkspace: (updates: Partial<Workspace>) => void;
+  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Default Sandbox fallback profile
-const SANDBOX_USER: User = {
-  id: 'usr-demo-001',
-  email: 'researcher@metalsense.local',
-  name: 'Dr. V. Sharma',
-  avatarUrl: 'https://ui-avatars.com/api/?name=Dr+Sharma&background=0f766e&color=fff',
-  createdAt: new Date().toISOString(),
-};
-
-const SANDBOX_WORKSPACE: Workspace = {
-  id: 'demo-workspace',
-  name: 'Delhi Aquifer Monitoring',
-  slug: 'delhi-aquifer-monitoring',
-  ownerId: SANDBOX_USER.id,
-  members: [{ userId: SANDBOX_USER.id, role: 'owner' }],
-  createdAt: new Date().toISOString(),
-};
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(SANDBOX_USER);
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([SANDBOX_WORKSPACE]);
-  const [activeWorkspace, setActiveWorkspace] = useState<Workspace | null>(SANDBOX_WORKSPACE);
-  const [userRole, setUserRole] = useState<UserRole>('owner');
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [activeWorkspace, setActiveWorkspace] = useState<Workspace | null>(null);
+  const [userRole, setUserRole] = useState<UserRole>('viewer');
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Check active session on load
-  useEffect(() => {
-    async function checkSession() {
-      try {
-        const res = await fetch('/api/v1/auth/me');
-        if (res.ok) {
-          const json = await res.json();
-          setUser(json.data.user);
-          setWorkspaces(json.data.workspaces);
-          if (json.data.workspaces.length > 0) {
-            setActiveWorkspace(json.data.workspaces[0]);
-            const role = json.data.workspaces[0].members.find(
-              (m: any) => m.userId === json.data.user.id
-            )?.role || 'owner';
-            setUserRole(role);
+  const calculateRole = (ws: Workspace | null, u: User | null): UserRole => {
+    if (!ws || !u) return 'viewer';
+    if (ws.ownerId === u.id) return 'owner';
+    const member = ws.members.find((m) => m.userId === u.id);
+    return member?.role || 'viewer';
+  };
+
+  const refreshSession = useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/auth/me', {
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const json = await res.json();
+        const userData: User = json.data.user;
+        const wsList: Workspace[] = json.data.workspaces || [];
+
+        setUser(userData);
+        setWorkspaces(wsList);
+        setIsAuthenticated(true);
+
+        // Retain current active workspace or pick first available
+        setActiveWorkspace((prev) => {
+          if (prev) {
+            const found = wsList.find((w) => w.id === prev.id);
+            if (found) {
+              setUserRole(calculateRole(found, userData));
+              return found;
+            }
           }
-          setIsAuthenticated(true);
-        }
-      } catch (err) {
-        // Fall back to sandbox demo
+          if (wsList.length > 0) {
+            setUserRole(calculateRole(wsList[0], userData));
+            return wsList[0];
+          }
+          return null;
+        });
+      } else {
+        setUser(null);
+        setWorkspaces([]);
+        setActiveWorkspace(null);
+        setIsAuthenticated(false);
       }
+    } catch {
+      setUser(null);
+      setWorkspaces([]);
+      setActiveWorkspace(null);
+      setIsAuthenticated(false);
+    } finally {
+      setIsLoading(false);
     }
-    checkSession();
   }, []);
 
-  const loginAsDevUser = async (email: string, name: string, role: UserRole = 'owner') => {
+  useEffect(() => {
+    refreshSession();
+  }, [refreshSession]);
+
+  const loginWithEmail = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/v1/auth/dev-login', {
+      const res = await fetch('/api/v1/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, name, role }),
+        credentials: 'include',
+        body: JSON.stringify({ email, password }),
       });
-      if (!res.ok) throw new Error('Dev login failed');
-      const json = await res.json();
-      setUser(json.data.user);
-      setWorkspaces(json.data.workspaces);
-      if (json.data.workspaces.length > 0) {
-        setActiveWorkspace(json.data.workspaces[0]);
-        setUserRole(role);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Login failed. Please check your credentials.');
       }
-      setIsAuthenticated(true);
+      await refreshSession();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const signupWithEmail = async (
+    name: string,
+    email: string,
+    password: string,
+    workspaceName?: string,
+    defaultStandard?: string,
+    defaultLodStrategy?: LODHandlingStrategy
+  ) => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/v1/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          workspaceName,
+          defaultStandard,
+          defaultLodStrategy,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Signup failed.');
+      }
+      await refreshSession();
     } finally {
       setIsLoading(false);
     }
@@ -95,20 +148,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch('/api/v1/auth/google', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ idToken }),
       });
+      const data = await res.json();
       if (!res.ok) {
-        const errJson = await res.json();
-        throw new Error(errJson.error || 'Google login failed');
+        throw new Error(data.error || 'Google authentication failed.');
       }
-      const json = await res.json();
-      setUser(json.data.user);
-      setWorkspaces(json.data.workspaces);
-      if (json.data.workspaces.length > 0) {
-        setActiveWorkspace(json.data.workspaces[0]);
-        setUserRole('owner');
-      }
-      setIsAuthenticated(true);
+      await refreshSession();
     } finally {
       setIsLoading(false);
     }
@@ -117,12 +164,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     setIsLoading(true);
     try {
-      await fetch('/api/v1/auth/logout', { method: 'POST' });
-      setUser(null);
-      setActiveWorkspace(null);
-      setWorkspaces([]);
-      setIsAuthenticated(false);
+      await fetch('/api/v1/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
     } finally {
+      setUser(null);
+      setWorkspaces([]);
+      setActiveWorkspace(null);
+      setIsAuthenticated(false);
       setIsLoading(false);
     }
   };
@@ -131,9 +181,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const ws = workspaces.find((w) => w.id === workspaceId);
     if (ws) {
       setActiveWorkspace(ws);
-      const role = ws.members.find((m) => m.userId === user?.id)?.role || 'viewer';
-      setUserRole(role);
+      setUserRole(calculateRole(ws, user));
     }
+  };
+
+  const updateActiveWorkspace = (updates: Partial<Workspace>) => {
+    if (!activeWorkspace) return;
+    const updated = { ...activeWorkspace, ...updates };
+    setActiveWorkspace(updated);
+    setWorkspaces((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
   };
 
   return (
@@ -145,10 +201,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userRole,
         isAuthenticated,
         isLoading,
-        loginAsDevUser,
+        loginWithEmail,
+        signupWithEmail,
         loginWithGoogle,
         logout,
         switchWorkspace,
+        updateActiveWorkspace,
+        refreshSession,
       }}
     >
       {children}
@@ -156,7 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useAuth() {
+export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');

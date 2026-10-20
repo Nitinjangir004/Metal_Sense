@@ -647,6 +647,104 @@ workspacesRouter.get(
 );
 
 /**
+ * GET /api/v1/workspaces/:workspaceId/members
+ */
+workspacesRouter.get(
+  '/:workspaceId/members',
+  requireWorkspaceRole('viewer'),
+  async (req: Request, res: Response) => {
+    const ws = await db.findWorkspaceById(req.params.workspaceId);
+    if (!ws) {
+      return res.status(404).json({ error: 'Workspace not found.' });
+    }
+    const memberDetails = await Promise.all(
+      ws.members.map(async (m) => {
+        const u = await db.findUserById(m.userId);
+        return {
+          userId: m.userId,
+          role: m.role,
+          name: u?.name || 'Unknown User',
+          email: u?.email || '',
+          avatarUrl: u?.avatarUrl,
+        };
+      })
+    );
+    res.json({ data: memberDetails });
+  }
+);
+
+/**
+ * POST /api/v1/workspaces/:workspaceId/members
+ */
+workspacesRouter.post(
+  '/:workspaceId/members',
+  requireWorkspaceRole('owner'),
+  async (req: Request, res: Response) => {
+    const schema = z.object({
+      email: z.string().email(),
+      role: z.enum(['editor', 'viewer']).default('viewer'),
+    });
+    const { email, role } = schema.parse(req.body);
+
+    let user = await db.findUserByEmail(email);
+    if (!user) {
+      user = await db.createUser({
+        email,
+        name: email.split('@')[0],
+      });
+    }
+
+    await db.addWorkspaceMember(req.params.workspaceId, user.id, role);
+    await db.recordAudit(
+      req.params.workspaceId,
+      req.user!.id,
+      'INVITE_MEMBER',
+      'workspace',
+      req.params.workspaceId,
+      { invitedEmail: email, role }
+    );
+
+    res.status(201).json({
+      data: {
+        userId: user.id,
+        name: user.name,
+        email: user.email,
+        role,
+      },
+    });
+  }
+);
+
+/**
+ * DELETE /api/v1/workspaces/:workspaceId/members/:userId
+ */
+workspacesRouter.delete(
+  '/:workspaceId/members/:userId',
+  requireWorkspaceRole('owner'),
+  async (req: Request, res: Response) => {
+    const ws = await db.findWorkspaceById(req.params.workspaceId);
+    if (!ws) {
+      return res.status(404).json({ error: 'Workspace not found.' });
+    }
+    if (ws.ownerId === req.params.userId) {
+      return res.status(400).json({ error: 'Cannot remove the workspace owner.' });
+    }
+
+    await db.removeWorkspaceMember(req.params.workspaceId, req.params.userId);
+    await db.recordAudit(
+      req.params.workspaceId,
+      req.user!.id,
+      'REMOVE_MEMBER',
+      'workspace',
+      req.params.workspaceId,
+      { removedUserId: req.params.userId }
+    );
+
+    res.json({ message: 'Member removed successfully.' });
+  }
+);
+
+/**
  * GET /api/v1/workspaces/:workspaceId/audit-logs
  * Requires owner role to inspect audit logs.
  */
