@@ -18,11 +18,11 @@
 cp .env.example .env                  # 1. Setup environment template
 npm install                           # 2. Install workspace dependencies
 npm run build                         # 3. Build shared, server, and client bundles
-npm test                              # 4. Run test suite (55 tests passing)
+npm test                              # 4. Run test suite (57 tests passing)
 npm run dev                           # 5. Launch both server (:5000) and client (:5173)
 ```
 
-> Open `http://localhost:5173` in your browser. Register an account, create a workspace, and click **"Load Example CSV"** to immediately test the platform with realistic groundwater monitoring datasets.
+> Open `http://localhost:5173` in your browser. Register an account, create a workspace, and click **"Download template"** or upload a test dataset from `examples/` (`examples/example_lab_results.csv` or `examples/groundwater_lab_samples.csv`).
 
 ---
 
