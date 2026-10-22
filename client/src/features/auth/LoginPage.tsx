@@ -5,10 +5,16 @@ import { GoogleLogin } from '@react-oauth/google';
 import { Shield, ArrowRight, AlertCircle, Loader2 } from 'lucide-react';
 
 export function LoginPage() {
-  const { loginWithEmail, loginWithGoogle } = useAuth();
+  const { loginWithEmail, loginWithGoogle, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const next = searchParams.get('next') || '/app';
+
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      navigate(next, { replace: true });
+    }
+  }, [isAuthenticated, navigate, next]);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

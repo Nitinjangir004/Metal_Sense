@@ -9,10 +9,16 @@ import { Select } from '../../components/ui/Select';
 import { Button } from '../../components/ui/Button';
 
 export function SignupPage() {
-  const { signupWithEmail, loginWithGoogle } = useAuth();
+  const { signupWithEmail, loginWithGoogle, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const next = searchParams.get('next') || '/app';
+
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      navigate(next, { replace: true });
+    }
+  }, [isAuthenticated, navigate, next]);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');

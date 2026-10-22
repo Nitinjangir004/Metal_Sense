@@ -12,8 +12,10 @@ import {
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
+import { useAuth } from '../auth/AuthContext';
 
 export function LandingPage() {
+  const { isAuthenticated } = useAuth();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const indices = [
@@ -111,16 +113,26 @@ export function LandingPage() {
             <Link to="/app/standards" className="text-xs font-semibold text-body hover:text-forest-900 hidden sm:inline">
               Standards
             </Link>
-            <Link to="/login">
-              <Button variant="ghost" size="sm">
-                Sign in
-              </Button>
-            </Link>
-            <Link to="/signup">
-              <Button variant="primary" size="sm">
-                Get started free
-              </Button>
-            </Link>
+            {isAuthenticated ? (
+              <Link to="/app">
+                <Button variant="primary" size="sm" rightIcon={<ArrowRight className="w-4 h-4" />}>
+                  Go to Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link to="/login">
+                  <Button variant="ghost" size="sm">
+                    Sign in
+                  </Button>
+                </Link>
+                <Link to="/signup">
+                  <Button variant="primary" size="sm">
+                    Get started free
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -142,16 +154,26 @@ export function LandingPage() {
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
-            <Link to="/signup">
-              <Button variant="primary" size="lg" rightIcon={<ArrowRight className="w-4 h-4" />}>
-                Get started free
-              </Button>
-            </Link>
-            <Link to="/login">
-              <Button variant="secondary" size="lg">
-                Sign in to workspace
-              </Button>
-            </Link>
+            {isAuthenticated ? (
+              <Link to="/app">
+                <Button variant="primary" size="lg" rightIcon={<ArrowRight className="w-4 h-4" />}>
+                  Go to Dashboard
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link to="/signup">
+                  <Button variant="primary" size="lg" rightIcon={<ArrowRight className="w-4 h-4" />}>
+                    Get started free
+                  </Button>
+                </Link>
+                <Link to="/login">
+                  <Button variant="secondary" size="lg">
+                    Sign in to workspace
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -282,12 +304,21 @@ export function LandingPage() {
             <Link to="/app/standards" className="hover:text-forest-900">
               Standards
             </Link>
-            <Link to="/login" className="hover:text-forest-900">
-              Sign in
-            </Link>
-            <Link to="/signup" className="hover:text-forest-900">
-              Sign up
-            </Link>
+            {isAuthenticated ? (
+              <Link to="/app" className="text-forest-700 hover:text-forest-900 font-bold flex items-center gap-1">
+                <span>Dashboard</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            ) : (
+              <>
+                <Link to="/login" className="hover:text-forest-900">
+                  Sign in
+                </Link>
+                <Link to="/signup" className="hover:text-forest-900">
+                  Sign up
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </footer>
