@@ -45,11 +45,28 @@ export async function fetchApi<T = any>(
   let body: any = null;
   const contentType = response.headers.get('content-type');
   if (contentType && contentType.includes('application/json')) {
-    body = await response.json();
+    try {
+      body = await response.json();
+    } catch {
+      body = null;
+    }
+  } else {
+    try {
+      const text = await response.text();
+      if (text && text.trim().length > 0) {
+        body = { error: text };
+      }
+    } catch {
+      body = null;
+    }
   }
 
   if (!response.ok) {
-    const errorMsg = body?.error || `Request failed with status ${response.status}`;
+    const errorMsg =
+      body?.error ||
+      body?.message ||
+      (typeof body === 'string' && body.length < 200 ? body : null) ||
+      `Request failed with status ${response.status}`;
     throw new ApiError(errorMsg, response.status, body);
   }
 
@@ -60,41 +77,134 @@ export async function fetchApi<T = any>(
 // React Query Hooks
 // ----------------------------------------------------
 
+export interface WorkspaceSummaryData {
+  kpis: {
+    totalSamples: number;
+    criticalCount: number;
+    moderateCount: number;
+    safeCount: number;
+    missingGpsCount: number;
+  };
+  totalSamples: number;
+  criticalCount: number;
+  moderateCount: number;
+  safeCount: number;
+  missingLocationCount: number;
+  categoryDistribution: Record<string, number>;
+  topExceededMetals: { symbol: string; count: number }[];
+  recentSamples: { sample: Sample; analysis: AnalysisRun | null }[];
+  latestSamples: { sample: Sample; analysis: AnalysisRun | null }[];
+}
+
+export interface WorkspaceAnalyticsData {
+  standard?: { code: string; title: string };
+  samplesCount: number;
+  distributions: {
+    hpi: Record<string, number>;
+    hei: Record<string, number>;
+    cd: Record<string, number>;
+  };
+  exceedanceFrequency: { symbol: string; count: number; name: string }[];
+  samplesWithAnalysis: { sample: Sample; analysis: AnalysisRun }[];
+  indexComparisons: {
+    sampleId: string;
+    sampleCode: string;
+    locationName: string;
+    collectionDate: string;
+    hpi: number;
+    hpiClassification: string;
+    hei: number;
+    cd: number;
+  }[];
+}
+
+export interface SamplesResult {
+  samples: ({ sample: Sample; analysis: AnalysisRun | null } & Sample)[];
+  total: number;
+  offset: number;
+  limit: number;
+}
+
+export interface SingleSampleResult {
+  sample: Sample;
+  analysis: AnalysisRun | null;
+  history: AnalysisRun[];
+}
+
 export function useWorkspaceSummary(workspaceId: string | undefined) {
-  return useQuery({
+  return useQuery<WorkspaceSummaryData>({
     queryKey: ['workspace-summary', workspaceId],
-    queryFn: () =>
-      fetchApi<{
+    queryFn: async (): Promise<WorkspaceSummaryData> => {
+      const res = await fetchApi<any>(`/api/v1/workspaces/${workspaceId}/summary`);
+      const totalSamples = res?.kpis?.totalSamples ?? res?.totalSamples ?? 0;
+      const criticalCount = res?.kpis?.criticalCount ?? res?.criticalCount ?? 0;
+      const moderateCount = res?.kpis?.moderateCount ?? res?.moderateCount ?? 0;
+      const safeCount = res?.kpis?.safeCount ?? res?.safeCount ?? 0;
+      const missingGpsCount = res?.kpis?.missingGpsCount ?? res?.missingLocationCount ?? 0;
+
+      const rawRecent = res?.recentSamples || res?.latestSamples || [];
+      const recentSamples = rawRecent.map((item: any) => {
+        const sample = (item.sample || item) as Sample;
+        const analysis = (item.analysis || null) as AnalysisRun | null;
+        return { sample, analysis };
+      });
+
+      return {
         kpis: {
-          totalSamples: number;
-          criticalCount: number;
-          moderateCount: number;
-          safeCount: number;
-          missingGpsCount: number;
-        };
-        categoryDistribution: Record<string, number>;
-        topExceededMetals: { symbol: string; count: number }[];
-        recentSamples: { sample: Sample; analysis: AnalysisRun | null }[];
-      }>(`/api/v1/workspaces/${workspaceId}/summary`),
+          totalSamples,
+          criticalCount,
+          moderateCount,
+          safeCount,
+          missingGpsCount,
+        },
+        totalSamples,
+        criticalCount,
+        moderateCount,
+        safeCount,
+        missingLocationCount: missingGpsCount,
+        categoryDistribution: res?.categoryDistribution || {
+          critical: criticalCount,
+          moderate: moderateCount,
+          safe: safeCount,
+          high: criticalCount,
+          medium: moderateCount,
+          low: safeCount,
+        },
+        topExceededMetals: res?.topExceededMetals || [],
+        recentSamples,
+        latestSamples: recentSamples,
+      };
+    },
     enabled: Boolean(workspaceId),
     staleTime: 30000,
   });
 }
 
-export function useWorkspaceAnalytics(workspaceId: string | undefined) {
-  return useQuery({
-    queryKey: ['workspace-analytics', workspaceId],
-    queryFn: () =>
-      fetchApi<{
-        samplesCount: number;
-        distributions: {
-          hpi: Record<string, number>;
-          hei: Record<string, number>;
-          cd: Record<string, number>;
-        };
-        exceedanceFrequency: { symbol: string; count: number; name: string }[];
-        samplesWithAnalysis: { sample: Sample; analysis: AnalysisRun }[];
-      }>(`/api/v1/workspaces/${workspaceId}/analytics`),
+export function useWorkspaceAnalytics(workspaceId: string | undefined, standardCode?: string) {
+  return useQuery<WorkspaceAnalyticsData>({
+    queryKey: ['workspace-analytics', workspaceId, standardCode],
+    queryFn: async (): Promise<WorkspaceAnalyticsData> => {
+      const qs = standardCode ? `?standard=${encodeURIComponent(standardCode)}` : '';
+      const res = await fetchApi<any>(`/api/v1/workspaces/${workspaceId}/analytics${qs}`);
+      const samplesWithAnalysis = (res?.samplesWithAnalysis || []).map((item: any) => {
+        const sample = (item.sample || item) as Sample;
+        const analysis = (item.analysis || null) as AnalysisRun;
+        return { sample, analysis };
+      });
+
+      return {
+        standard: res?.standard,
+        samplesCount: res?.samplesCount ?? samplesWithAnalysis.length,
+        distributions: res?.distributions || {
+          hpi: { low: 0, medium: 0, high: 0 },
+          hei: { low: 0, medium: 0, high: 0 },
+          cd: { low: 0, medium: 0, high: 0 },
+        },
+        exceedanceFrequency: res?.exceedanceFrequency || [],
+        samplesWithAnalysis,
+        indexComparisons: res?.indexComparisons || [],
+      };
+    },
     enabled: Boolean(workspaceId),
     staleTime: 30000,
   });
@@ -124,28 +234,52 @@ export function useSamples(
   const qs = queryParams.toString();
   const url = `/api/v1/workspaces/${workspaceId}/samples${qs ? `?${qs}` : ''}`;
 
-  return useQuery({
+  return useQuery<SamplesResult>({
     queryKey: ['samples', workspaceId, params],
-    queryFn: () =>
-      fetchApi<{
-        samples: { sample: Sample; analysis: AnalysisRun | null }[];
-        total: number;
-        offset: number;
-        limit: number;
-      }>(url),
+    queryFn: async (): Promise<SamplesResult> => {
+      const res = await fetchApi<any>(url);
+      const rawList: any[] = Array.isArray(res) ? res : res?.samples || [];
+      const normalizedSamples = rawList.map((item: any) => {
+        const s = (item.sample || item) as Sample;
+        const a = (item.analysis || null) as AnalysisRun | null;
+        return {
+          ...item,
+          ...s,
+          sample: s,
+          analysis: a,
+        };
+      });
+      const total =
+        typeof res?.total === 'number'
+          ? res.total
+          : typeof res?.meta?.total === 'number'
+          ? res.meta.total
+          : normalizedSamples.length;
+
+      return {
+        samples: normalizedSamples,
+        total,
+        offset: params.offset || 0,
+        limit: params.limit || 50,
+      };
+    },
     enabled: Boolean(workspaceId),
   });
 }
 
 export function useSample(workspaceId: string | undefined, sampleId: string | undefined) {
-  return useQuery({
+  return useQuery<SingleSampleResult>({
     queryKey: ['sample', workspaceId, sampleId],
-    queryFn: () =>
-      fetchApi<{
-        sample: Sample;
-        analysis: AnalysisRun | null;
-        history: AnalysisRun[];
-      }>(`/api/v1/workspaces/${workspaceId}/samples/${sampleId}`),
+    queryFn: async (): Promise<SingleSampleResult> => {
+      const res = await fetchApi<any>(`/api/v1/workspaces/${workspaceId}/samples/${sampleId}`);
+      const sample = (res?.sample || res) as Sample;
+      const analysis = (res?.analysis || null) as AnalysisRun | null;
+      return {
+        sample,
+        analysis,
+        history: (res?.history || []) as AnalysisRun[],
+      };
+    },
     enabled: Boolean(workspaceId && sampleId),
   });
 }
@@ -170,9 +304,9 @@ export function useCreateSample(workspaceId: string | undefined) {
         }
       ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['samples', workspaceId] });
-      queryClient.invalidateQueries({ queryKey: ['workspace-summary', workspaceId] });
-      queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['samples'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-analytics'] });
     },
   });
 }
@@ -200,9 +334,9 @@ export function useDeleteSample(workspaceId: string | undefined) {
         method: 'DELETE',
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['samples', workspaceId] });
-      queryClient.invalidateQueries({ queryKey: ['workspace-summary', workspaceId] });
-      queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['samples'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-analytics'] });
     },
   });
 }
@@ -272,9 +406,9 @@ export function useImportCsv(workspaceId: string | undefined) {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['samples', workspaceId] });
-      queryClient.invalidateQueries({ queryKey: ['workspace-summary', workspaceId] });
-      queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['samples'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-analytics'] });
     },
   });
 }
@@ -319,9 +453,9 @@ export function useConfirmExtraction(workspaceId: string | undefined) {
         }
       ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['samples', workspaceId] });
-      queryClient.invalidateQueries({ queryKey: ['workspace-summary', workspaceId] });
-      queryClient.invalidateQueries({ queryKey: ['workspace-analytics', workspaceId] });
+      queryClient.invalidateQueries({ queryKey: ['samples'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['workspace-analytics'] });
     },
   });
 }

@@ -267,6 +267,26 @@ export class MemoryStore implements IStore {
     return sample ? { ...sample } : null;
   }
 
+  async findSampleByCode(workspaceId: string, sampleCode: string): Promise<Sample | null> {
+    const targetCode = sampleCode.trim().toLowerCase();
+    const found = Array.from(this.samples.values()).find(
+      (s) => s.workspaceId === workspaceId && s.sampleCode.trim().toLowerCase() === targetCode
+    );
+    return found ? { ...found } : null;
+  }
+
+  async upsertSample(
+    sampleData: Omit<Sample, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<{ sample: Sample; isNew: boolean }> {
+    const existing = await this.findSampleByCode(sampleData.workspaceId, sampleData.sampleCode);
+    if (existing) {
+      const updated = await this.updateSample(existing.id, sampleData);
+      return { sample: updated!, isNew: false };
+    }
+    const created = await this.createSample(sampleData);
+    return { sample: created, isNew: true };
+  }
+
   async updateSample(sampleId: string, updates: Partial<Sample>): Promise<Sample | null> {
     const sample = this.samples.get(sampleId);
     if (!sample) return null;

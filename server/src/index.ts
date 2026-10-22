@@ -3,6 +3,14 @@ import { env } from './config/env.js';
 import { connectToDatabase } from './db/connection.js';
 
 async function bootstrap() {
+  process.on('unhandledRejection', (reason) => {
+    console.error('[MetalSense Server] Unhandled Promise Rejection:', reason);
+  });
+
+  process.on('uncaughtException', (err) => {
+    console.error('[MetalSense Server] Uncaught Exception:', err);
+  });
+
   await connectToDatabase();
 
   const server = app.listen(env.PORT, () => {

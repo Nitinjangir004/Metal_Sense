@@ -19,6 +19,17 @@ export function errorHandler(
     });
   }
 
+  // Handle MongoDB duplicate key error (code 11000)
+  const anyErr = err as any;
+  if (anyErr.code === 11000 || (anyErr.name === 'MongoServerError' && anyErr.message?.includes('E11000'))) {
+    const keyPattern = anyErr.keyPattern ? Object.keys(anyErr.keyPattern).join(', ') : 'unique field';
+    const keyValue = anyErr.keyValue ? Object.values(anyErr.keyValue).join(', ') : '';
+    return res.status(409).json({
+      error: `Duplicate record conflict: ${keyPattern} "${keyValue}" already exists.`,
+      requestId: reqId,
+    });
+  }
+
   // Safe error response without stack trace leakage in production
   const status = 'status' in err && typeof err.status === 'number' ? err.status : 500;
   const message = status === 500 && env.NODE_ENV === 'production' ? 'Internal server error' : err.message;

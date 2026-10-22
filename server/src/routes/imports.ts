@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { authenticate, requireWorkspaceRole } from '../middleware/auth.js';
 import { uploadMiddleware, verifyFileMagicBytes } from '../middleware/upload.js';
@@ -37,57 +37,58 @@ importsRouter.post(
   '/:workspaceId/csv/preview',
   requireWorkspaceRole('editor'),
   uploadMiddleware.single('file'),
-  async (req: Request, res: Response) => {
-    let csvText = '';
-    let fileName = 'preview.csv';
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      let csvText = '';
+      let fileName = 'preview.csv';
 
-    if (req.file) {
-      if (!verifyFileMagicBytes(req.file.path, req.file.mimetype)) {
+      if (req.file) {
+        if (!verifyFileMagicBytes(req.file.path, req.file.mimetype)) {
+          try {
+            fs.unlinkSync(req.file.path);
+          } catch {}
+          return res
+            .status(400)
+            .json({ error: 'Uploaded file signature does not match CSV/text format.' });
+        }
+        csvText = fs.readFileSync(req.file.path, 'utf8');
+        fileName = req.file.originalname;
         try {
           fs.unlinkSync(req.file.path);
         } catch {}
-        return res
-          .status(400)
-          .json({ error: 'Uploaded file signature does not match CSV/text format.' });
+      } else if (req.body?.csvText) {
+        csvText = req.body.csvText;
+        fileName = req.body.fileName || 'direct_paste.csv';
+      } else {
+        return res.status(400).json({
+          error: 'No CSV file or csvText payload provided.',
+        });
       }
-      csvText = fs.readFileSync(req.file.path, 'utf8');
-      fileName = req.file.originalname;
-      try {
-        fs.unlinkSync(req.file.path);
-      } catch {}
-      try {
-        fs.unlinkSync(req.file.path);
-      } catch {}
-    } else if (req.body?.csvText) {
-      csvText = req.body.csvText;
-      fileName = req.body.fileName || 'direct_paste.csv';
-    } else {
-      return res.status(400).json({
-        error: 'No CSV file or csvText payload provided.',
+
+      const projects = await db.findProjectsByWorkspace(req.params.workspaceId);
+      const projectId = projects[0]?.id || 'proj-default';
+
+      const parseResult = parseSamplesCsv(
+        csvText,
+        req.params.workspaceId,
+        projectId,
+        fileName
+      );
+
+      res.json({
+        data: {
+          fileName,
+          totalRows: parseResult.totalRows,
+          validCount: parseResult.validCount,
+          errorCount: parseResult.errorCount,
+          samples: parseResult.samples,
+          errors: parseResult.errors,
+          rawCsvText: csvText,
+        },
       });
+    } catch (err) {
+      next(err);
     }
-
-    const projects = await db.findProjectsByWorkspace(req.params.workspaceId);
-    const projectId = projects[0]?.id || 'proj-default';
-
-    const parseResult = parseSamplesCsv(
-      csvText,
-      req.params.workspaceId,
-      projectId,
-      fileName
-    );
-
-    res.json({
-      data: {
-        fileName,
-        totalRows: parseResult.totalRows,
-        validCount: parseResult.validCount,
-        errorCount: parseResult.errorCount,
-        samples: parseResult.samples,
-        errors: parseResult.errors,
-        rawCsvText: csvText,
-      },
-    });
   }
 );
 
@@ -99,80 +100,94 @@ importsRouter.post(
   '/:workspaceId/csv',
   requireWorkspaceRole('editor'),
   uploadMiddleware.single('file'),
-  async (req: Request, res: Response) => {
-    let csvText = '';
-    let fileName = 'upload.csv';
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      let csvText = '';
+      let fileName = 'upload.csv';
 
-    if (req.file) {
-      if (!verifyFileMagicBytes(req.file.path, req.file.mimetype)) {
+      if (req.file) {
+        if (!verifyFileMagicBytes(req.file.path, req.file.mimetype)) {
+          try {
+            fs.unlinkSync(req.file.path);
+          } catch {}
+          return res
+            .status(400)
+            .json({ error: 'Uploaded file signature does not match CSV/text format.' });
+        }
+        csvText = fs.readFileSync(req.file.path, 'utf8');
+        fileName = req.file.originalname;
         try {
           fs.unlinkSync(req.file.path);
         } catch {}
-        return res
-          .status(400)
-          .json({ error: 'Uploaded file signature does not match CSV/text format.' });
+      } else if (req.body?.csvText) {
+        csvText = req.body.csvText;
+        fileName = req.body.fileName || 'direct_paste.csv';
+      } else {
+        return res.status(400).json({
+          error: 'No CSV file or csvText payload provided.',
+        });
       }
-      csvText = fs.readFileSync(req.file.path, 'utf8');
-      fileName = req.file.originalname;
-      try {
-        fs.unlinkSync(req.file.path);
-      } catch {}
-    } else if (req.body?.csvText) {
-      csvText = req.body.csvText;
-      fileName = req.body.fileName || 'direct_paste.csv';
-    } else {
-      return res.status(400).json({
-        error: 'No CSV file or csvText payload provided.',
+
+      const projects = await db.findProjectsByWorkspace(req.params.workspaceId);
+      const projectId = projects[0]?.id || 'proj-default';
+
+      const parseResult = parseSamplesCsv(
+        csvText,
+        req.params.workspaceId,
+        projectId,
+        fileName
+      );
+
+      const ws = await db.findWorkspaceById(req.params.workspaceId);
+      let standard = BIS_10500_2012;
+      if (ws?.defaultStandard === 'WHO_GDWQ_4TH') {
+        standard = WHO_GDWQ_4TH_ED;
+      }
+      const lodStrategy: LODHandlingStrategy = (ws?.defaultLodStrategy as LODHandlingStrategy) || 'half_lod';
+
+      // Save valid samples and execute calculations (upsert to handle existing sample codes seamlessly)
+      const created = [];
+      const errors = [...parseResult.errors];
+
+      for (const sampleData of parseResult.samples) {
+        try {
+          const { sample } = await db.upsertSample(sampleData);
+          const analysis = calculateSampleIndices(sample, {
+            standard,
+            lodStrategy,
+          });
+          await db.createAnalysis(analysis);
+          created.push({ sample, analysis });
+        } catch (rowErr: any) {
+          errors.push({
+            rowNumber: 0,
+            sampleCode: sampleData.sampleCode,
+            message: rowErr.message || 'Failed to ingest sample row.',
+          });
+        }
+      }
+
+      await db.recordAudit(
+        req.params.workspaceId,
+        req.user!.id,
+        'IMPORT_CSV',
+        'sample_batch',
+        `${created.length}_samples`,
+        { fileName, validCount: created.length, errorCount: errors.length }
+      );
+
+      res.status(201).json({
+        data: {
+          totalRows: parseResult.totalRows,
+          validCount: created.length,
+          errorCount: errors.length,
+          createdSamples: created,
+          errors,
+        },
       });
+    } catch (err) {
+      next(err);
     }
-
-    const projects = await db.findProjectsByWorkspace(req.params.workspaceId);
-    const projectId = projects[0]?.id || 'proj-default';
-
-    const parseResult = parseSamplesCsv(
-      csvText,
-      req.params.workspaceId,
-      projectId,
-      fileName
-    );
-
-    const ws = await db.findWorkspaceById(req.params.workspaceId);
-    let standard = BIS_10500_2012;
-    if (ws?.defaultStandard === 'WHO_GDWQ_4TH') {
-      standard = WHO_GDWQ_4TH_ED;
-    }
-    const lodStrategy: LODHandlingStrategy = (ws?.defaultLodStrategy as LODHandlingStrategy) || 'half_lod';
-
-    // Save valid samples and execute calculations
-    const created = [];
-    for (const sampleData of parseResult.samples) {
-      const sample = await db.createSample(sampleData);
-      const analysis = calculateSampleIndices(sample, {
-        standard,
-        lodStrategy,
-      });
-      await db.createAnalysis(analysis);
-      created.push({ sample, analysis });
-    }
-
-    await db.recordAudit(
-      req.params.workspaceId,
-      req.user!.id,
-      'IMPORT_CSV',
-      'sample_batch',
-      `${created.length}_samples`,
-      { fileName, validCount: created.length, errorCount: parseResult.errorCount }
-    );
-
-    res.status(201).json({
-      data: {
-        totalRows: parseResult.totalRows,
-        validCount: created.length,
-        errorCount: parseResult.errorCount,
-        createdSamples: created,
-        errors: parseResult.errors,
-      },
-    });
   }
 );
 
@@ -273,89 +288,93 @@ importsRouter.get(
 importsRouter.post(
   '/:workspaceId/:jobId/confirm',
   requireWorkspaceRole('editor'),
-  async (req: Request, res: Response) => {
-    const job = await db.findExtractionJobById(req.params.jobId);
-    if (!job || job.workspaceId !== req.params.workspaceId) {
-      return res.status(404).json({ error: 'Extraction job not found.' });
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const job = await db.findExtractionJobById(req.params.jobId);
+      if (!job || job.workspaceId !== req.params.workspaceId) {
+        return res.status(404).json({ error: 'Extraction job not found.' });
+      }
+
+      const ConfirmSchema = z.object({
+        sampleCode: z.string().min(2),
+        sampleMatrix: z
+          .enum(['drinking_water', 'groundwater', 'surface_water'])
+          .default('groundwater'),
+        collectionDate: z.string().datetime(),
+        locationName: z.string().min(1),
+        district: z.string().optional(),
+        measurements: z.array(AnalyteMeasurementSchema).min(1),
+        notes: z.string().optional(),
+      });
+
+      const body = ConfirmSchema.parse(req.body);
+      const projects = await db.findProjectsByWorkspace(req.params.workspaceId);
+      const projectId = projects[0]?.id || 'proj-default';
+
+      const { sample } = await db.upsertSample({
+        workspaceId: req.params.workspaceId,
+        projectId,
+        sampleCode: body.sampleCode,
+        sampleMatrix: body.sampleMatrix,
+        collectionDate: body.collectionDate,
+        location: {
+          id: `loc-${Date.now()}`,
+          name: body.locationName,
+          code: `LOC-${body.sampleCode}`,
+          district: body.district,
+          country: 'India',
+          isSensitive: false,
+        },
+        laboratory: job.proposedData?.laboratoryName
+          ? {
+              name: job.proposedData.laboratoryName,
+              accreditationNumber: job.proposedData.accreditationNumber,
+              reportNumber: job.proposedData.reportNumber,
+            }
+          : undefined,
+        measurements: body.measurements,
+        notes: body.notes,
+        provenance: {
+          method: 'ocr_document',
+          originalFileName: job.originalFileName,
+          extractedAt: job.createdAt,
+          verifiedByUserId: req.user!.id,
+          verifiedAt: new Date().toISOString(),
+          isDemo: false,
+        },
+      });
+
+      // Run deterministic calculation
+      const analysis = calculateSampleIndices(sample, {
+        standard: BIS_10500_2012,
+        lodStrategy: 'half_lod',
+      });
+      await db.createAnalysis(analysis);
+
+      await db.updateExtractionJob(job.id, {
+        status: 'confirmed',
+        confirmedAt: new Date().toISOString(),
+        createdSampleId: sample.id,
+      });
+
+      await db.recordAudit(
+        req.params.workspaceId,
+        req.user!.id,
+        'CONFIRM_OCR_EXTRACTION',
+        'sample',
+        sample.id,
+        { jobId: job.id, sampleCode: sample.sampleCode }
+      );
+
+      res.status(201).json({
+        data: {
+          sample,
+          analysis,
+          jobId: job.id,
+        },
+      });
+    } catch (err) {
+      next(err);
     }
-
-    const ConfirmSchema = z.object({
-      sampleCode: z.string().min(2),
-      sampleMatrix: z
-        .enum(['drinking_water', 'groundwater', 'surface_water'])
-        .default('groundwater'),
-      collectionDate: z.string().datetime(),
-      locationName: z.string().min(1),
-      district: z.string().optional(),
-      measurements: z.array(AnalyteMeasurementSchema).min(1),
-      notes: z.string().optional(),
-    });
-
-    const body = ConfirmSchema.parse(req.body);
-    const projects = await db.findProjectsByWorkspace(req.params.workspaceId);
-    const projectId = projects[0]?.id || 'proj-default';
-
-    const sample = await db.createSample({
-      workspaceId: req.params.workspaceId,
-      projectId,
-      sampleCode: body.sampleCode,
-      sampleMatrix: body.sampleMatrix,
-      collectionDate: body.collectionDate,
-      location: {
-        id: `loc-${Date.now()}`,
-        name: body.locationName,
-        code: `LOC-${body.sampleCode}`,
-        district: body.district,
-        country: 'India',
-        isSensitive: false,
-      },
-      laboratory: job.proposedData?.laboratoryName
-        ? {
-            name: job.proposedData.laboratoryName,
-            accreditationNumber: job.proposedData.accreditationNumber,
-            reportNumber: job.proposedData.reportNumber,
-          }
-        : undefined,
-      measurements: body.measurements,
-      notes: body.notes,
-      provenance: {
-        method: 'ocr_document',
-        originalFileName: job.originalFileName,
-        extractedAt: job.createdAt,
-        verifiedByUserId: req.user!.id,
-        verifiedAt: new Date().toISOString(),
-        isDemo: false,
-      },
-    });
-
-    // Run deterministic calculation
-    const analysis = calculateSampleIndices(sample, {
-      standard: BIS_10500_2012,
-      lodStrategy: 'half_lod',
-    });
-    await db.createAnalysis(analysis);
-
-    await db.updateExtractionJob(job.id, {
-      status: 'confirmed',
-      confirmedAt: new Date().toISOString(),
-      createdSampleId: sample.id,
-    });
-
-    await db.recordAudit(
-      req.params.workspaceId,
-      req.user!.id,
-      'CONFIRM_OCR_EXTRACTION',
-      'sample',
-      sample.id,
-      { jobId: job.id, sampleCode: sample.sampleCode }
-    );
-
-    res.status(201).json({
-      data: {
-        sample,
-        analysis,
-        jobId: job.id,
-      },
-    });
   }
 );

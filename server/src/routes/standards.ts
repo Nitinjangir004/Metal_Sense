@@ -14,6 +14,7 @@ standardsRouter.get('/', (req: Request, res: Response) => {
     publicationYear: std.publicationYear,
     isDefault: std.isDefault,
     analyteCount: Object.keys(std.limits).length,
+    limits: std.limits,
   }));
   res.json({ data: list });
 });

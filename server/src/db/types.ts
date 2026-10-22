@@ -62,6 +62,10 @@ export interface IStore {
     options?: SampleFilterOptions
   ): Promise<{ samples: Sample[]; total: number }>;
   findSampleById(sampleId: string): Promise<Sample | null>;
+  findSampleByCode(workspaceId: string, sampleCode: string): Promise<Sample | null>;
+  upsertSample(
+    sampleData: Omit<Sample, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<{ sample: Sample; isNew: boolean }>;
   updateSample(sampleId: string, updates: Partial<Sample>): Promise<Sample | null>;
   deleteSample(sampleId: string): Promise<boolean>;
 

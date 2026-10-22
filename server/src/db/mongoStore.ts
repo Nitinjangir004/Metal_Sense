@@ -261,6 +261,63 @@ export class MongoStore implements IStore {
     return doc as Sample | null;
   }
 
+  async findSampleByCode(workspaceId: string, sampleCode: string): Promise<Sample | null> {
+    const doc = await SampleModel.findOne({ workspaceId, sampleCode }).lean();
+    return doc as Sample | null;
+  }
+
+  async upsertSample(
+    sampleData: Omit<Sample, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<{ sample: Sample; isNew: boolean }> {
+    const now = new Date().toISOString();
+    const existing = await SampleModel.findOne({
+      workspaceId: sampleData.workspaceId,
+      sampleCode: sampleData.sampleCode,
+    });
+
+    if (existing) {
+      const updated = await SampleModel.findOneAndUpdate(
+        { id: existing.id },
+        {
+          $set: {
+            ...sampleData,
+            updatedAt: now,
+          },
+        },
+        { new: true }
+      ).lean();
+      return { sample: updated as Sample, isNew: false };
+    }
+
+    try {
+      const doc = await SampleModel.create({
+        id: `sample-${crypto.randomUUID()}`,
+        ...sampleData,
+        createdAt: now,
+        updatedAt: now,
+      });
+      return { sample: doc.toObject() as Sample, isNew: true };
+    } catch (err: any) {
+      // In case of concurrent write conflict on unique index (workspaceId, sampleCode)
+      if (err.code === 11000 || (err.name === 'MongoServerError' && err.message?.includes('E11000'))) {
+        const doc = await SampleModel.findOneAndUpdate(
+          { workspaceId: sampleData.workspaceId, sampleCode: sampleData.sampleCode },
+          {
+            $set: {
+              ...sampleData,
+              updatedAt: now,
+            },
+          },
+          { new: true }
+        ).lean();
+        if (doc) {
+          return { sample: doc as Sample, isNew: false };
+        }
+      }
+      throw err;
+    }
+  }
+
   async updateSample(sampleId: string, updates: Partial<Sample>): Promise<Sample | null> {
     const now = new Date().toISOString();
     const doc = await SampleModel.findOneAndUpdate(

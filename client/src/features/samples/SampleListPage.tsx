@@ -54,8 +54,13 @@ export function SampleListPage() {
     }
   };
 
-  const samplesList = data?.samples || [];
-  const totalCount = data?.total || 0;
+  const rawList: any[] = Array.isArray(data) ? data : (data as any)?.samples || [];
+  const samplesList = rawList.map((item: any) => {
+    const s = item.sample || item;
+    const a = item.analysis || null;
+    return { sample: s, analysis: a, ...s };
+  });
+  const totalCount = typeof (data as any)?.total === 'number' ? (data as any).total : samplesList.length;
   const totalPages = Math.ceil(totalCount / pageSize);
 
   return (
@@ -154,7 +159,9 @@ export function SampleListPage() {
               </tr>
             </TableHeader>
             <TableBody>
-              {samplesList.map(({ sample: s, analysis: a }) => {
+              {samplesList.map((item: any) => {
+                const s = item.sample || item;
+                const a = item.analysis;
                 return (
                   <TableRow key={s.id}>
                     <TableCell className="font-mono font-bold text-forest-900">
@@ -163,10 +170,10 @@ export function SampleListPage() {
                       </Link>
                     </TableCell>
                     <TableCell>
-                      <div className="font-semibold text-title">{s.location.name}</div>
+                      <div className="font-semibold text-title">{s.location?.name || 'Unknown Location'}</div>
                       <div className="text-[11px] text-body">
-                        {s.location.district || 'Unspecified'}
-                        {s.location.coordinates ? ' • GPS mapped' : ' • No GPS'}
+                        {s.location?.district || 'Unspecified'}
+                        {s.location?.coordinates ? ' • GPS mapped' : ' • No GPS'}
                       </div>
                     </TableCell>
                     <TableCell className="font-mono text-body">
@@ -187,7 +194,7 @@ export function SampleListPage() {
                     <TableCell>
                       {a && a.exceededAnalytes.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
-                          {a.exceededAnalytes.map((m) => (
+                          {a.exceededAnalytes.map((m: any) => (
                             <Badge key={m.symbol} variant="high" size="sm">
                               {m.symbol}
                             </Badge>

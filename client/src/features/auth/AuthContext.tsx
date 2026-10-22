@@ -99,9 +99,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         credentials: 'include',
         body: JSON.stringify({ email, password }),
       });
-      const data = await res.json();
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
+      }
       if (!res.ok) {
-        throw new Error(data.error || 'Login failed. Please check your credentials.');
+        throw new Error(data?.error || `Login failed (${res.status}). Please check your credentials.`);
       }
       await refreshSession();
     } finally {
@@ -132,9 +137,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           defaultLodStrategy,
         }),
       });
-      const data = await res.json();
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
+      }
       if (!res.ok) {
-        throw new Error(data.error || 'Signup failed.');
+        throw new Error(data?.error || `Signup failed (${res.status}). Please try again.`);
       }
       await refreshSession();
     } finally {
@@ -151,9 +161,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         credentials: 'include',
         body: JSON.stringify({ idToken }),
       });
-      const data = await res.json();
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = null;
+      }
       if (!res.ok) {
-        throw new Error(data.error || 'Google authentication failed.');
+        throw new Error(data?.error || `Google authentication failed (${res.status}).`);
       }
       await refreshSession();
     } finally {

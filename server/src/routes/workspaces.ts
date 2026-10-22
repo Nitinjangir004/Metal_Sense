@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { authenticate, requireWorkspaceRole } from '../middleware/auth.js';
 import { db } from '../db/store.js';
-import { CreateSampleSchema, BIS_10500_2012, STANDARD_REGISTRY } from '@metalsense/shared';
+import { CreateSampleSchema, BIS_10500_2012, STANDARD_REGISTRY, CANONICAL_METALS } from '@metalsense/shared';
 import { calculateSampleIndices } from '../services/calculation/index.js';
 import { aiService } from '../services/ai/adapter.js';
 import { generateWorkspaceCsv, generateAuditPdf } from '../services/reports/reportGenerator.js';
@@ -110,7 +110,33 @@ workspacesRouter.get(
   requireWorkspaceRole('viewer'),
   async (req: Request, res: Response) => {
     const summary = await db.getWorkspaceSummary(req.params.workspaceId);
-    res.json({ data: summary });
+    res.json({
+      data: {
+        kpis: {
+          totalSamples: summary.totalSamples,
+          criticalCount: summary.criticalCount,
+          moderateCount: summary.moderateCount,
+          safeCount: summary.safeCount,
+          missingGpsCount: summary.missingLocationCount,
+        },
+        totalSamples: summary.totalSamples,
+        criticalCount: summary.criticalCount,
+        moderateCount: summary.moderateCount,
+        safeCount: summary.safeCount,
+        missingLocationCount: summary.missingLocationCount,
+        categoryDistribution: {
+          high: summary.criticalCount,
+          medium: summary.moderateCount,
+          low: summary.safeCount,
+          critical: summary.criticalCount,
+          moderate: summary.moderateCount,
+          safe: summary.safeCount,
+        },
+        topExceededMetals: summary.topExceededMetals,
+        recentSamples: summary.latestSamples,
+        latestSamples: summary.latestSamples,
+      },
+    });
   }
 );
 
@@ -180,10 +206,14 @@ workspacesRouter.get(
 
     // Attach latest analysis to each sample
     const latestAnalyses = await db.findLatestAnalysesForWorkspace(req.params.workspaceId);
-    const enriched = samples.map((sample) => ({
-      ...sample,
-      analysis: latestAnalyses.get(sample.id) || null,
-    }));
+    const enriched = samples.map((sample) => {
+      const analysis = latestAnalyses.get(sample.id) || null;
+      return {
+        ...sample,
+        sample,
+        analysis,
+      };
+    });
 
     res.json({
       data: enriched,
@@ -204,38 +234,58 @@ workspacesRouter.get(
 workspacesRouter.post(
   '/:workspaceId/samples',
   requireWorkspaceRole('editor'),
-  async (req: Request, res: Response) => {
-    const body = CreateSampleSchema.parse({
-      ...req.body,
-      workspaceId: req.params.workspaceId,
-    });
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const projects = await db.findProjectsByWorkspace(req.params.workspaceId);
+      const projectId = req.body?.projectId || projects[0]?.id || 'proj-default';
+      const body = CreateSampleSchema.parse({
+        ...req.body,
+        workspaceId: req.params.workspaceId,
+        projectId,
+      });
 
-    const sample = await db.createSample(body);
-    const standardCode = (req.body?.standardCode as string) || 'BIS_10500_2012';
-    const standard = STANDARD_REGISTRY[standardCode] || BIS_10500_2012;
-    const lodStrategy = req.body?.lodStrategy || 'half_lod';
+      // Prevent duplicate sample code within the same workspace
+      const existing = await db.findSampleByCode(req.params.workspaceId, body.sampleCode);
+      if (existing) {
+        return res.status(409).json({
+          error: `A sample with code "${body.sampleCode}" already exists in this workspace.`,
+        });
+      }
 
-    const analysis = calculateSampleIndices(sample, {
-      standard,
-      lodStrategy,
-    });
+      const sample = await db.createSample(body);
+      const standardCode = (req.body?.standardCode as string) || 'BIS_10500_2012';
+      const standard = STANDARD_REGISTRY[standardCode] || BIS_10500_2012;
+      const lodStrategy = req.body?.lodStrategy || 'half_lod';
 
-    await db.createAnalysis(analysis);
-    await db.recordAudit(
-      req.params.workspaceId,
-      req.user!.id,
-      'CREATE_SAMPLE',
-      'sample',
-      sample.id,
-      { sampleCode: sample.sampleCode }
-    );
+      const analysis = calculateSampleIndices(sample, {
+        standard,
+        lodStrategy,
+      });
 
-    res.status(201).json({
-      data: {
-        sample,
-        analysis,
-      },
-    });
+      await db.createAnalysis(analysis);
+      await db.recordAudit(
+        req.params.workspaceId,
+        req.user!.id,
+        'CREATE_SAMPLE',
+        'sample',
+        sample.id,
+        { sampleCode: sample.sampleCode }
+      );
+
+      res.status(201).json({
+        data: {
+          sample,
+          analysis,
+        },
+      });
+    } catch (err: any) {
+      if (err.code === 11000 || (err.name === 'MongoServerError' && err.message?.includes('E11000'))) {
+        return res.status(409).json({
+          error: `A sample with code "${req.body?.sampleCode}" already exists in this workspace.`,
+        });
+      }
+      next(err);
+    }
   }
 );
 
@@ -270,44 +320,64 @@ workspacesRouter.get(
 workspacesRouter.patch(
   '/:workspaceId/samples/:sampleId',
   requireWorkspaceRole('editor'),
-  async (req: Request, res: Response) => {
-    const existing = await db.findSampleById(req.params.sampleId);
-    if (!existing || existing.workspaceId !== req.params.workspaceId) {
-      return res.status(404).json({ error: 'Sample not found in this workspace.' });
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const existing = await db.findSampleById(req.params.sampleId);
+      if (!existing || existing.workspaceId !== req.params.workspaceId) {
+        return res.status(404).json({ error: 'Sample not found in this workspace.' });
+      }
+
+      const PatchSchema = z.object({
+        sampleCode: z.string().min(2).optional(),
+        collectionDate: z.string().optional(),
+        location: z
+          .object({
+            name: z.string().optional(),
+            coordinates: z
+              .object({
+                latitude: z.number().optional(),
+                longitude: z.number().optional(),
+              })
+              .optional(),
+            district: z.string().optional(),
+            state: z.string().optional(),
+          })
+          .optional(),
+        notes: z.string().optional(),
+      });
+
+      const updates = PatchSchema.parse(req.body);
+
+      // If sampleCode is being updated, verify uniqueness
+      if (updates.sampleCode && updates.sampleCode !== existing.sampleCode) {
+        const dup = await db.findSampleByCode(req.params.workspaceId, updates.sampleCode);
+        if (dup && dup.id !== existing.id) {
+          return res.status(409).json({
+            error: `A sample with code "${updates.sampleCode}" already exists in this workspace.`,
+          });
+        }
+      }
+
+      const updated = await db.updateSample(req.params.sampleId, updates as any);
+
+      await db.recordAudit(
+        req.params.workspaceId,
+        req.user!.id,
+        'UPDATE_SAMPLE',
+        'sample',
+        req.params.sampleId,
+        updates
+      );
+
+      res.json({ data: updated });
+    } catch (err: any) {
+      if (err.code === 11000 || (err.name === 'MongoServerError' && err.message?.includes('E11000'))) {
+        return res.status(409).json({
+          error: `Sample code "${req.body?.sampleCode}" already exists in this workspace.`,
+        });
+      }
+      next(err);
     }
-
-    const PatchSchema = z.object({
-      sampleCode: z.string().min(2).optional(),
-      collectionDate: z.string().optional(),
-      location: z
-        .object({
-          name: z.string().optional(),
-          coordinates: z
-            .object({
-              latitude: z.number().optional(),
-              longitude: z.number().optional(),
-            })
-            .optional(),
-          district: z.string().optional(),
-          state: z.string().optional(),
-        })
-        .optional(),
-      notes: z.string().optional(),
-    });
-
-    const updates = PatchSchema.parse(req.body);
-    const updated = await db.updateSample(req.params.sampleId, updates as any);
-
-    await db.recordAudit(
-      req.params.workspaceId,
-      req.user!.id,
-      'UPDATE_SAMPLE',
-      'sample',
-      req.params.sampleId,
-      updates
-    );
-
-    res.json({ data: updated });
   }
 );
 
@@ -415,22 +485,51 @@ workspacesRouter.get(
     const { samples } = await db.findSamplesByWorkspace(req.params.workspaceId, { limit: 100 });
     const latestAnalyses = await db.findLatestAnalysesForWorkspace(req.params.workspaceId);
 
-    const indexComparisons = samples.map((sample) => {
+    const samplesWithAnalysis = samples.map((sample) => {
       let analysis = latestAnalyses.get(sample.id);
       if (!analysis || analysis.standardUsed.code !== standard.code) {
         analysis = calculateSampleIndices(sample, { standard, lodStrategy: 'half_lod' });
       }
-      return {
-        sampleId: sample.id,
-        sampleCode: sample.sampleCode,
-        locationName: sample.location.name,
-        collectionDate: sample.collectionDate,
-        hpi: Number(analysis.hpi.value.toFixed(2)),
-        hpiClassification: analysis.hpi.classification,
-        hei: Number(analysis.hei.value.toFixed(2)),
-        cd: Number(analysis.cd.value.toFixed(2)),
-      };
+      return { sample, analysis };
     });
+
+    const indexComparisons = samplesWithAnalysis.map(({ sample, analysis }) => ({
+      sampleId: sample.id,
+      sampleCode: sample.sampleCode,
+      locationName: sample.location.name,
+      collectionDate: sample.collectionDate,
+      hpi: Number(analysis.hpi.value.toFixed(2)),
+      hpiClassification: analysis.hpi.classification,
+      hei: Number(analysis.hei.value.toFixed(2)),
+      cd: Number(analysis.cd.value.toFixed(2)),
+    }));
+
+    const distributions = {
+      hpi: { low: 0, medium: 0, high: 0 } as Record<string, number>,
+      hei: { low: 0, medium: 0, high: 0 } as Record<string, number>,
+      cd: { low: 0, medium: 0, high: 0 } as Record<string, number>,
+    };
+    const metalCounts: Record<string, { count: number; name: string }> = {};
+
+    for (const { analysis } of samplesWithAnalysis) {
+      if (analysis) {
+        const cls = analysis.hpi.classification;
+        distributions.hpi[cls] = (distributions.hpi[cls] || 0) + 1;
+        for (const exceeded of analysis.exceededAnalytes || []) {
+          if (!metalCounts[exceeded.symbol]) {
+            const metalName = CANONICAL_METALS[exceeded.symbol]?.name || exceeded.symbol;
+            metalCounts[exceeded.symbol] = { count: 0, name: metalName };
+          }
+          metalCounts[exceeded.symbol].count++;
+        }
+      }
+    }
+
+    const exceedanceFrequency = Object.entries(metalCounts).map(([symbol, { count, name }]) => ({
+      symbol,
+      count,
+      name,
+    }));
 
     res.json({
       data: {
@@ -438,6 +537,10 @@ workspacesRouter.get(
           code: standard.code,
           title: standard.title,
         },
+        samplesCount: samples.length,
+        distributions,
+        exceedanceFrequency,
+        samplesWithAnalysis,
         indexComparisons,
       },
     });

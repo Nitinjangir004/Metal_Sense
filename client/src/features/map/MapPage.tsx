@@ -17,7 +17,12 @@ export function MapPage() {
   const { data, isLoading, isError, error, refetch } = useSamples(activeWorkspace?.id, { limit: 200 });
   const [selectedSampleId, setSelectedSampleId] = useState<string | null>(null);
 
-  const samplesList = data?.samples || [];
+  const rawList: any[] = Array.isArray(data) ? data : (data as any)?.samples || [];
+  const samplesList = rawList.map((item: any) => {
+    const s = item.sample || item;
+    const a = item.analysis || null;
+    return { sample: s, analysis: a, ...s };
+  });
 
   // Filter only samples with valid GPS coordinates
   const geocodedSamples = samplesList.filter(
@@ -222,7 +227,7 @@ export function MapPage() {
                     <div className="text-caption font-semibold mb-1.5 uppercase">Exceeded Metals</div>
                     {selectedItem.analysis && selectedItem.analysis.exceededAnalytes.length > 0 ? (
                       <div className="flex flex-wrap gap-1.5">
-                        {selectedItem.analysis.exceededAnalytes.map((m) => (
+                        {selectedItem.analysis.exceededAnalytes.map((m: any) => (
                           <Badge key={m.symbol} variant="high" size="sm">
                             {m.symbol} ({m.monitored} mg/L)
                           </Badge>

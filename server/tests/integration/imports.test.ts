@@ -120,4 +120,52 @@ WELL-INVALID,Bad Well,-0.05,0.02`;
       fs.unlinkSync(dummyPdfPath);
     }
   });
+
+  it('handles duplicate sample codes gracefully on CSV re-import without crashing', async () => {
+    const csvBatch1 = `SampleCode,CollectionDate,LocationName,As_mg_L,Pb_mg_L
+GW-TEST-001,2026-03-21T09:00:00Z,Alpha Well,0.015,0.008`;
+
+    // First import
+    const res1 = await request(app)
+      .post(`/api/v1/imports/${workspaceId}/csv`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ csvText: csvBatch1, fileName: 'batch1.csv' });
+
+    expect(res1.status).toBe(201);
+    expect(res1.body.data.validCount).toBe(1);
+
+    // Re-importing same sample code (e.g. updated measurements)
+    const csvBatch2 = `SampleCode,CollectionDate,LocationName,As_mg_L,Pb_mg_L
+GW-TEST-001,2026-03-21T09:00:00Z,Alpha Well,0.025,0.012`;
+
+    const res2 = await request(app)
+      .post(`/api/v1/imports/${workspaceId}/csv`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({ csvText: csvBatch2, fileName: 'batch2.csv' });
+
+    expect(res2.status).toBe(201);
+    expect(res2.body.data.validCount).toBe(1);
+    expect(res2.body.data.errorCount).toBe(0);
+    expect(res2.body.data.createdSamples[0].sample.sampleCode).toBe('GW-TEST-001');
+
+    // Confirm that manual creation of duplicate code returns 409 Conflict
+    const manualDupRes = await request(app)
+      .post(`/api/v1/workspaces/${workspaceId}/samples`)
+      .set('Authorization', `Bearer ${userToken}`)
+      .send({
+        sampleCode: 'GW-TEST-001',
+        sampleMatrix: 'groundwater',
+        collectionDate: new Date().toISOString(),
+        location: {
+          id: 'loc-dup',
+          name: 'Alpha Well Dup',
+          code: 'LOC-GW-TEST-001',
+        },
+        measurements: [{ symbol: 'As', name: 'Arsenic', value: 0.02, unit: 'mg/L', qualifier: '=' }],
+        provenance: { method: 'manual', isDemo: false },
+      });
+
+    expect(manualDupRes.status).toBe(409);
+    expect(manualDupRes.body.error).toContain('already exists in this workspace');
+  });
 });

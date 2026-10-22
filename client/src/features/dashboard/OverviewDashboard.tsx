@@ -72,14 +72,14 @@ export function OverviewDashboard() {
   }
 
   const kpis = summary?.kpis || {
-    totalSamples: 0,
-    criticalCount: 0,
-    moderateCount: 0,
-    safeCount: 0,
-    missingGpsCount: 0,
+    totalSamples: (summary as any)?.totalSamples || 0,
+    criticalCount: (summary as any)?.criticalCount || 0,
+    moderateCount: (summary as any)?.moderateCount || 0,
+    safeCount: (summary as any)?.safeCount || 0,
+    missingGpsCount: (summary as any)?.missingLocationCount || 0,
   };
 
-  const recentSamples = summary?.recentSamples || [];
+  const recentSamples = summary?.recentSamples || (summary as any)?.latestSamples || [];
   const topExceeded = summary?.topExceededMetals || [];
 
   return (
@@ -288,7 +288,9 @@ export function OverviewDashboard() {
                   </tr>
                 </TableHeader>
                 <TableBody>
-                  {recentSamples.map(({ sample, analysis }) => {
+                  {recentSamples.map((item: any) => {
+                    const sample = item.sample || item;
+                    const analysis = item.analysis;
                     const hpiVal = analysis?.hpi?.value ?? 0;
                     const heiVal = analysis?.hei?.value ?? 0;
                     const cdVal = analysis?.cd?.value ?? 0;
@@ -301,9 +303,9 @@ export function OverviewDashboard() {
                           </Link>
                         </TableCell>
                         <TableCell>
-                          <div className="font-semibold">{sample.location.name}</div>
+                          <div className="font-semibold">{sample.location?.name || 'Unknown Location'}</div>
                           <div className="text-[11px] text-body">
-                            {sample.location.district || 'Unspecified'}
+                            {sample.location?.district || 'Unspecified'}
                           </div>
                         </TableCell>
                         <TableCell className="font-mono text-body">

@@ -30,7 +30,12 @@ export function ReportsPage() {
   const [isExportingCsv, setIsExportingCsv] = useState(false);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
 
-  const samplesList = samplesData?.samples || [];
+  const rawList: any[] = Array.isArray(samplesData) ? samplesData : (samplesData as any)?.samples || [];
+  const samplesList = rawList.map((item: any) => {
+    const s = item.sample || item;
+    const a = item.analysis || null;
+    return { sample: s, analysis: a, ...s };
+  });
 
   const handleExportCSV = async () => {
     if (!activeWorkspace?.id) return;
@@ -241,13 +246,15 @@ export function ReportsPage() {
               </tr>
             </TableHeader>
             <TableBody>
-              {samplesList.map(({ sample: s, analysis: a }) => {
+              {samplesList.map((item: any) => {
+                const s = item.sample || item;
+                const a = item.analysis;
                 return (
                   <TableRow key={s.id}>
                     <TableCell className="font-mono font-bold text-forest-900">{s.sampleCode}</TableCell>
                     <TableCell>
-                      <div className="font-semibold text-title">{s.location.name}</div>
-                      <div className="text-[11px] text-body">{s.location.district}</div>
+                      <div className="font-semibold text-title">{s.location?.name || 'Unknown Location'}</div>
+                      <div className="text-[11px] text-body">{s.location?.district}</div>
                     </TableCell>
                     <TableCell className="font-mono font-bold text-title">
                       {a?.hpi?.value ? a.hpi.value.toFixed(1) : '—'}
